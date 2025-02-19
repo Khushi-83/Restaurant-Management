@@ -4,7 +4,7 @@ import { useState } from "react";
 import { NavigationMenu, NavigationMenuItem, NavigationMenuList, NavigationMenuLink } from "@/components/ui/navigation-menu";
 import "@/app/globals.css";
 import Link from "next/link";
-import { Menu, X } from "lucide-react"; // Icons for menu toggle
+import { Menu, X } from "lucide-react";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -17,52 +17,43 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="bg-gray-100">
         {/* ✅ Navbar */}
-        <div className="bg-white shadow-md w-full px-6 py-4 flex items-center justify-between">
+        <div className="bg-white shadow-md w-full px-6 py-4 flex items-center">
           {/* 🍽️ Restaurant Name / Logo */}
           <h1 className="text-xl font-semibold text-gray-800">Restaurant</h1>
 
-          {/* 🍔 Mobile Menu Button */}
-          <button className="md:hidden" onClick={() => setIsOpen(!isOpen)}>
-            {isOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
-
-          {/* 🖥️ Navbar Links (Desktop & Mobile) */}
-          <nav
-            className={`absolute md:relative top-16 left-0 w-full md:w-auto bg-white md:bg-transparent shadow-md md:shadow-none p-4 md:p-0 transition-all ${
-              isOpen ? "block" : "hidden"
-            } md:flex md:items-center md:justify-end`}
-          >
+          {/* 🖥️ Navbar Links (Desktop) */}
+          <nav className="ml-auto hidden md:flex items-center space-x-6">
             <NavigationMenu>
-              <NavigationMenuList className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-6 text-lg font-medium">
-                <NavigationMenuItem>
-                  <NavigationMenuLink asChild>
-                    <Link href="/" className="text-gray-700 hover:text-blue-600">Home</Link>
-                  </NavigationMenuLink>
-                </NavigationMenuItem>
-                <NavigationMenuItem>
-                  <NavigationMenuLink asChild>
-                    <Link href="/menu" className="text-gray-700 hover:text-blue-600">Menu</Link>
-                  </NavigationMenuLink>
-                </NavigationMenuItem>
-                <NavigationMenuItem>
-                  <NavigationMenuLink asChild>
-                    <Link href="/orders" className="text-gray-700 hover:text-blue-600">Order Status</Link>
-                  </NavigationMenuLink>
-                </NavigationMenuItem>
-                <NavigationMenuItem>
-                  <NavigationMenuLink asChild>
-                    <Link href="/cart" className="text-gray-700 hover:text-blue-600">Cart</Link>
-                  </NavigationMenuLink>
-                </NavigationMenuItem>
-                <NavigationMenuItem>
-                  <NavigationMenuLink asChild>
-                    <Link href="/chat" className="text-gray-700 hover:text-blue-600">Chat</Link>
-                  </NavigationMenuLink>
-                </NavigationMenuItem>
+              <NavigationMenuList className="flex space-x-6 text-lg font-medium">
+                {["Home", "Menu", "Order Status", "Cart", "Chat"].map((item, index) => (
+                  <NavigationMenuItem key={index}>
+                    <NavigationMenuLink asChild>
+                      <Link href={`/${item.toLowerCase().replace(" ", "")}`} className="text-gray-700 hover:text-blue-600">
+                        {item}
+                      </Link>
+                    </NavigationMenuLink>
+                  </NavigationMenuItem>
+                ))}
               </NavigationMenuList>
             </NavigationMenu>
           </nav>
+
+          {/* 🍔 Mobile Menu Button */}
+          <button className="md:hidden ml-auto" onClick={() => setIsOpen(!isOpen)}>
+            {isOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
         </div>
+
+        {/* ✅ Mobile Dropdown Menu */}
+        {isOpen && (
+          <div className="bg-white shadow-md w-full md:hidden flex flex-col items-center space-y-4 py-4">
+            {["Home", "Menu", "Order Status", "Cart", "Chat"].map((item, index) => (
+              <Link key={index} href={`/${item.toLowerCase().replace(" ", "")}`} className="text-gray-700 hover:text-blue-600 text-lg">
+                {item}
+              </Link>
+            ))}
+          </div>
+        )}
 
         {/* ✅ Page Content */}
         <main className="p-6">{children}</main>
