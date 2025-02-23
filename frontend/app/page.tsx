@@ -46,3 +46,14 @@ interface CategoryCardProps {
   link: string;
 }
 
+function CategoryCard({ name, imageUrl, link }: CategoryCardProps) {
+  return (
+    <Link href={link} className="bg-white p-6 rounded-3xl shadow-lg flex flex-col items-center space-y-3 transition-transform transform hover:scale-105">
+      <div className="w-28 h-28 bg-gray-200 rounded-full overflow-hidden flex items-center justify-center">
+        <Image src={imageUrl} alt={name} width={112} height={112} className="object-cover w-full h-full" />
+      </div>
+      <h2 className="text-lg font-semibold text-gray-800 text-center">{name}</h2>
+      <p className="text-purple-500 font-bold text-sm text-center">see more</p>
+    </Link>
+  );
+}
