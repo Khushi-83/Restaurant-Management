@@ -4,7 +4,7 @@ import Image from 'next/image';
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center p-6">
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center p-2">
       {/* ✅ Header */}
       <header className="w-full flex justify-between items-center py-4">
         <h1 className="text-xl font-bold">Delicious food for you</h1>
