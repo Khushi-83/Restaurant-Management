@@ -12,27 +12,27 @@ type FoodItem = {
   category: string;
 };
 
-const Beverages = () => {
-  const [Beverages, setBeverages] = useState<FoodItem[]>([]);
+const Savory = () => {
+  const [Savoury, setSavoury] = useState<FoodItem[]>([]);
 
   useEffect(() => {
     fetch("http://localhost:5000/api/food-items")
       .then((res) => res.json())
       .then((data: FoodItem[]) => {
-        const filteredItems = data.filter((item) => item.category === "Beverages");
-        setBeverages(filteredItems);
+        const filteredItems = data.filter((item) => item.category === "Savory");
+        setSavoury(filteredItems);
       })
       .catch((err) => console.error("Error fetching food items:", err));
   }, []);
 
   return (
     <div className="p-6">
-      <h1 className="text-3xl font-bold text-center mb-6">Beverages</h1>
+      <h1 className="text-3xl font-bold text-center mb-6">Savoury</h1>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {Beverages.length > 0 ? (
-          Beverages.map((item) => <FoodCard key={item.id} item={item} />)
+        {Savoury.length > 0 ? (
+          Savoury.map((item) => <FoodCard key={item.id} item={item} />)
         ) : (
-          <p>No Beverages available.</p>
+          <p>No Savoury available.</p>
         )}
       </div>
     </div>
@@ -73,5 +73,4 @@ const FoodCard = ({ item }: { item: FoodItem }) => {
   );
 };
 
-
-export default Beverages;
+export default Savory;
