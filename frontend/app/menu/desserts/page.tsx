@@ -1,3 +1,4 @@
+"use client"
 import { useEffect, useState } from "react";
 import Image from "next/image";
 
@@ -38,12 +39,31 @@ const Desserts = () => {
 };
 
 const FoodCard = ({ item }: { item: FoodItem }) => (
-  <div className="border p-4 rounded-lg shadow-md">
-    <Image src={item.image_url} alt={item.name} width={200} height={150} className="rounded-md" />
-    <h3 className="text-lg font-semibold mt-2">{item.name}</h3>
-    <p className="text-gray-600">Price: ₹{item.price}</p>
-    <p className="text-gray-500">Available: {item.quantity}</p>
+  <div className="border p-4 rounded-lg shadow-md w-56 flex flex-col items-center bg-white">
+    {/* Image Section */}
+    <div className="w-full h-36 relative">
+      <Image
+        src={item.image_url}
+        alt={item.name}
+        layout="fill"
+        objectFit="cover"
+        className="rounded-md"
+      />
+    </div>
+
+    {/* Details Section */}
+    <div className="w-full text-center mt-3">
+      <h3 className="text-lg font-semibold">{item.name}</h3>
+      <p className="text-gray-600">Price: ₹{item.price}</p>
+      <p className="text-gray-500">Available: {item.quantity}</p>
+      
+      {/* Add Button */}
+      <button className="mt-3 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition">
+        Add
+      </button>
+    </div>
   </div>
 );
+
 
 export default Desserts;
