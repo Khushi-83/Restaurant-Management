@@ -1,72 +1,55 @@
 // contexts/CartContext.tsx
 'use client';
-
 import { createContext, useContext, useState } from 'react';
-
-type FoodItem = {
-  id: number;
-  name: string;
-  price: number;
-  image_url: string;
-  quantity?: number;
-};
+import type { CartItem } from '@/types/types';
 
 type CartContextType = {
-  cart: FoodItem[];
-  addToCart: (item: FoodItem) => void;
-  removeFromCart: (itemId: number) => void;
+  cart: CartItem[];
+  addToCart: (item: Omit<CartItem, 'quantity'>) => void;
+  removeFromCart: (id: string) => void;
   clearCart: () => void;
   totalItems: number;
   totalPrice: number;
-  notification: string | null;
-  showNotification: (message: string) => void;
 };
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [cart, setCart] = useState<FoodItem[]>([]);
-  const [notification, setNotification] = useState<string | null>(null);
+  const [cart, setCart] = useState<CartItem[]>([]);
 
-  const addToCart = (item: FoodItem) => {
-    setCart(prevCart => {
-      const existingItem = prevCart.find(cartItem => cartItem.id === item.id);
-      if (existingItem) {
-        return prevCart.map(cartItem =>
-          cartItem.id === item.id
-            ? { ...cartItem, quantity: (cartItem.quantity || 1) + 1 }
-            : cartItem
-        );
-      }
-      return [...prevCart, { ...item, quantity: 1 }];
+  const addToCart = (item: Omit<CartItem, 'quantity'>) => {
+    setCart(prev => {
+      const existing = prev.find(i => i.id === item.id);
+      return existing
+        ? prev.map(i => 
+            i.id === item.id 
+              ? { ...i, quantity: i.quantity + 1 } 
+              : i
+          )
+        : [...prev, { ...item, quantity: 1 }];
     });
-    showNotification(`${item.name} added to cart!`);
   };
 
-  const removeFromCart = (itemId: number) => {
-    setCart(prevCart => prevCart.filter(item => item.id !== itemId));
+  const removeFromCart = (id: string) => {
+    setCart(prev => prev.filter(item => item.id !== id));
   };
 
   const clearCart = () => setCart([]);
 
-  const showNotification = (message: string) => {
-    setNotification(message);
-    setTimeout(() => setNotification(null), 3000);
-  };
-
-  const value = {
-    cart,
-    addToCart,
-    removeFromCart,
-    clearCart,
-    totalItems: cart.reduce((total, item) => total + (item.quantity || 1), 0),
-    totalPrice: cart.reduce((total, item) => total + (item.price * (item.quantity || 1)), 0),
-    notification,
-    showNotification
-  };
+  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   return (
-    <CartContext.Provider value={value}>
+    <CartContext.Provider 
+      value={{ 
+        cart, 
+        addToCart, 
+        removeFromCart, 
+        clearCart, 
+        totalItems, 
+        totalPrice 
+      }}
+    >
       {children}
     </CartContext.Provider>
   );
