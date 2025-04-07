@@ -57,7 +57,7 @@ function DesktopNavigation() {
   const { totalItems } = useCart();
 
   const navItems = [
-    //{ name: "Home", href: "/" },
+    { name: "Home", href: "/" },
     { name: "Feedback", href: "/feedback" },
     { name: "Chat", href: "/chat" },
     { name: "Order Status", href: "/orderstatus" },

@@ -119,7 +119,13 @@ NavigationMenuIndicator.displayName =
 const CustomClientNavigation = () => (
   <NavigationMenu>
     <NavigationMenuList>
-      
+      <NavigationMenuItem>
+        <Link href="/" legacyBehavior passHref>
+          <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+            Home
+          </NavigationMenuLink>
+        </Link>
+      </NavigationMenuItem>
       <NavigationMenuItem>
         <Link href="/feedback" legacyBehavior passHref>
           <NavigationMenuLink className={navigationMenuTriggerStyle()}>
