@@ -119,10 +119,10 @@ export default function OrdersPanel() {
     // More sample data...
   ];
 
-  const handleStatusUpdate = (orderId: string, status: string) => {
-    // Implement status update logic
-    console.log(`Updating order ${orderId} to ${status}`);
-  };
+  // const handleStatusUpdate = (orderId: string, status: string) => {
+  //   // Implement status update logic
+  //   console.log(`Updating order ${orderId} to ${status}`);
+  // };
 
   return (
     <div>
