@@ -55,19 +55,20 @@ export default function CheckoutButton({
       const { paymentSessionId } = await paymentRes.json();
 
       // 3. Open Cashfree
-if (window.Cashfree && typeof window.Cashfree.initialize === 'function') {
-  window.Cashfree.initialize({
-    paymentSessionId,
-    returnUrl: `${window.location.origin}/payment-status?table=${tableNo}`,
-    paymentModes: {
-      upi: { flow: 'intent' },
-      card: { channel: 'link' }
-    }
-  });
-} else {
-  console.error("Cashfree SDK not loaded or initialize method missing");
-  setPaymentStatus('failed');
-}
+      if (typeof window !== 'undefined' && window.Cashfree && typeof window.Cashfree.initialize === 'function') {
+        window.Cashfree.initialize({
+          paymentSessionId,
+          returnUrl: `${window.location.origin}/payment-status?table=${tableNo}`,
+          paymentModes: {
+            upi: { flow: 'intent' },
+            card: { channel: 'link' },
+          },
+        });
+      } else {
+        console.error("Cashfree SDK not loaded or initialize method missing");
+        setPaymentStatus('failed');
+      }
+      
 
 
     } catch (error) {
@@ -81,9 +82,13 @@ if (window.Cashfree && typeof window.Cashfree.initialize === 'function') {
   return (
     <>
       <Script 
-        src="https://sdk.cashfree.com/js/ui/2.0.0/cashfree.prod.js" 
-        strategy="afterInteractive"
-      />
+  src="https://sdk.cashfree.com/js/ui/2.0.0/cashfree.prod.js" 
+  strategy="afterInteractive"
+  onLoad={() => {
+    console.log("✅ Cashfree SDK loaded");
+  }}
+/>
+
 
       <button
         onClick={handleCheckout}

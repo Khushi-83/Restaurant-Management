@@ -1,38 +1,193 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import { useEffect, useState } from 'react';
+import { Layout, Menu, theme, message, notification } from 'antd';
+import {
+  AppstoreOutlined,
+  ShoppingCartOutlined,
+  UserOutlined,
+  MessageOutlined,
+  PieChartOutlined,
+  SettingOutlined,
+  StarOutlined,
+  AudioOutlined,
+} from '@ant-design/icons';
+import { socket } from '@/lib/socket';
 
-export default function AdminPage() {
-  const [form, setForm] = useState({ name: "", price: "", quantity: "", image_url: "", category: "Starters" });
+const { Header, Sider, Content } = Layout;
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
+export default function AdminDashboard() {
+  const [collapsed, setCollapsed] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<string>('orders');
+  const {
+    token: { colorBgContainer },
+  } = theme.useToken();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const { error } = await supabase.from("food_items").insert([{ ...form, price: parseFloat(form.price), quantity: parseInt(form.quantity) }]);
-    if (error) alert(error.message);
-    else alert("Food item added successfully!");
+  // Real-Time Setup
+  useEffect(() => {
+    socket.connect();
+    
+    socket.on('order_update', (order) => {
+      message.success(`New order from Table ${order.table_number}`);
+    });
+    
+    socket.on('new_message', (msg) => {
+      notification.info({
+        message: `Message from ${msg.sender}`,
+        description: msg.message,
+      });
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'orders': return <OrdersPanel />;
+      case 'preferences': return <PreferencesPanel />;
+      case 'menu': return <MenuPanel />;
+      case 'feedback': return <FeedbackPanel />;
+      case 'reports': return <ReportsPanel />;
+      case 'messages': return <MessagesPanel />;
+      case 'music': return <MusicPanel />;
+      default: return <OrdersPanel />;
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center p-6">
-      <h1 className="text-xl font-bold mb-4">Add Food Item</h1>
-      <form className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md" onSubmit={handleSubmit}>
-        <input type="text" name="name" placeholder="Food Name" required className="mb-2 w-full p-2 border rounded" onChange={handleChange} />
-        <input type="text" name="price" placeholder="Price" required className="mb-2 w-full p-2 border rounded" onChange={handleChange} />
-        <input type="text" name="quantity" placeholder="Quantity" required className="mb-2 w-full p-2 border rounded" onChange={handleChange} />
-        <input type="text" name="image_url" placeholder="Image URL" required className="mb-2 w-full p-2 border rounded" onChange={handleChange} />
-        <label htmlFor="category" className="mb-2 block">Category</label>
-        <select id="category" name="category" className="mb-2 w-full p-2 border rounded" onChange={handleChange}>
-          {["Starters", "Savory", "Main Course", "Appetizers", "Beverages", "Desserts"].map((cat) => (
-            <option key={cat} value={cat}>{cat}</option>
-          ))}
-        </select>
-        <button type="submit" className="w-full bg-purple-500 text-white p-2 rounded">Add Food Item</button>
-      </form>
-    </div>
+    <Layout style={{ minHeight: '100vh' }}>
+      <Sider 
+        collapsible 
+        collapsed={collapsed} 
+        onCollapse={(value: boolean) => setCollapsed(value)}
+        width={250}
+      >
+        <div className="demo-logo-vertical" style={{
+          height: '64px',
+          margin: '16px',
+          background: 'rgba(255, 255, 255, 0.2)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'white',
+          fontSize: '18px',
+          fontWeight: 'bold'
+        }}>
+          {collapsed ? 'RMS' : 'Restaurant Admin'}
+        </div>
+        <Menu
+          theme="dark"
+          defaultSelectedKeys={['orders']}
+          mode="inline"
+          onSelect={(info: { key: string }) => setActiveTab(info.key)}
+          items={[
+            {
+              key: 'orders',
+              icon: <ShoppingCartOutlined />,
+              label: 'Orders',
+            },
+            {
+              key: 'preferences',
+              icon: <UserOutlined />,
+              label: 'Customer Preferences',
+            },
+            {
+              key: 'menu',
+              icon: <AppstoreOutlined />,
+              label: 'Menu Management',
+            },
+            {
+              key: 'feedback',
+              icon: <StarOutlined />,
+              label: 'Customer Feedback',
+            },
+            {
+              key: 'reports',
+              icon: <PieChartOutlined />,
+              label: 'Daily Reports',
+            },
+            {
+              key: 'messages',
+              icon: <MessageOutlined />,
+              label: 'Customer Messages',
+            },
+            {
+              key: 'music',
+              icon: <AudioOutlined />,
+              label: 'Song Requests',
+            },
+            {
+              key: 'settings',
+              icon: <SettingOutlined />,
+              label: 'Settings',
+            },
+          ]}
+        />
+      </Sider>
+      <Layout>
+        <Header style={{ padding: 0, background: colorBgContainer }} />
+        <Content style={{ margin: '24px 16px 0', overflow: 'initial' }}>
+          <div style={{ 
+            padding: 24, 
+            background: colorBgContainer,
+            borderRadius: '8px'
+          }}>
+            {renderContent()}
+          </div>
+        </Content>
+      </Layout>
+    </Layout>
   );
 }
+
+// Placeholder components for each panel
+const OrdersPanel = () => (
+  <div>
+    <h2>Current Orders</h2>
+    {/* Order management table will go here */}
+  </div>
+);
+
+const PreferencesPanel = () => (
+  <div>
+    <h2>Customer Preferences</h2>
+    {/* Preferences tracking will go here */}
+  </div>
+);
+
+const MenuPanel = () => (
+  <div>
+    <h2>Menu Management</h2>
+    {/* Menu CRUD interface will go here */}
+  </div>
+);
+
+const FeedbackPanel = () => (
+  <div>
+    <h2>Customer Feedback</h2>
+    {/* Feedback review system will go here */}
+  </div>
+);
+
+const ReportsPanel = () => (
+  <div>
+    <h2>Daily Reports</h2>
+    {/* Reports and analytics will go here */}
+  </div>
+);
+
+const MessagesPanel = () => (
+  <div>
+    <h2>Customer Messages</h2>
+    {/* Real-time chat interface will go here */}
+  </div>
+);
+
+const MusicPanel = () => (
+  <div>
+    <h2>Song Requests</h2>
+    {/* Music request management will go here */}
+  </div>
+);
