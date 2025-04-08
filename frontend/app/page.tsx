@@ -65,7 +65,7 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 items-center">
           <div>
             <Image 
-              src="/images/delivery.jpg" 
+              src="/images/food-bg.jpeg" 
               alt="Fast food delivery" 
               width={600} 
               height={400}
@@ -175,10 +175,10 @@ export default function HomePage() {
 }
 
 const categories = [
-  { name: 'Starters', icon: '/images/starters.jpg', link: '/menu/starters' },
-  { name: 'Main Course', icon: '/images/main-course.jpg', link: '/menu/main-course' },
-  { name: 'Beverages', icon: '/images/beverages.jpg', link: '/menu/beverages' },
-  { name: 'Desserts', icon: '/images/desserts.jpg', link: '/menu/desserts' },
+  { name: 'Starters', icon: '/images/starters.svg', link: '/menu/starters' },
+  { name: 'Main Course', icon: '/images/main-course.svg', link: '/menu/main-course' },
+  { name: 'Beverages', icon: '/images/beverages.svg', link: '/menu/beverages' },
+  { name: 'Desserts', icon: '/images/desserts.svg', link: '/menu/desserts' },
 ];
 
 interface CategoryCardProps {
