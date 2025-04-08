@@ -3,17 +3,23 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
+import { Menu, X } from 'lucide-react';
 
 export default function HomePage() {
   const [scrolled, setScrolled] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   useEffect(() => {
-    const handleScroll: () => void = () => {
+    const handleScroll = () => {
       setScrolled(window.scrollY > 50);
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const toggleMenu = () => {
+    setIsMenuOpen((prev) => !prev);
+  };
 
   return (
     <div className="relative">
@@ -24,21 +30,35 @@ export default function HomePage() {
       )}>
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
           <Link href="/" className="text-2xl font-bold text-gray-900">Restaurant</Link>
-          <div className="flex space-x-8">
+          <div className="hidden md:flex space-x-8">
             <Link href="/" className="text-gray-900 hover:text-red-600">Home</Link>
             <Link href="/feedback" className="text-gray-900 hover:text-red-600">Feedback</Link>
             <Link href="/chat" className="text-gray-900 hover:text-red-600">Chat</Link>
             <Link href="/order-status" className="text-gray-900 hover:text-red-600">Order Status</Link>
             <Link href="/cart" className="text-gray-900 hover:text-red-600">Cart</Link>
+            <Link href="/menu" className="text-gray-900 hover:text-red-600">Menu</Link>
           </div>
+          <button onClick={toggleMenu} className="md:hidden text-gray-900">
+            {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
         </div>
+        {isMenuOpen && (
+          <div className="md:hidden px-6 pb-4 flex flex-col space-y-4 bg-white shadow-md">
+            <Link href="/" className="text-gray-900 hover:text-red-600">Home</Link>
+            <Link href="/feedback" className="text-gray-900 hover:text-red-600">Feedback</Link>
+            <Link href="/chat" className="text-gray-900 hover:text-red-600">Chat</Link>
+            <Link href="/order-status" className="text-gray-900 hover:text-red-600">Order Status</Link>
+            <Link href="/cart" className="text-gray-900 hover:text-red-600">Cart</Link>
+            <Link href="/menu" className="text-gray-900 hover:text-red-600">Menu</Link>
+          </div>
+        )}
       </nav>
 
       {/* Full-page Hero Section */}
       <section className="relative h-screen w-full flex items-center justify-center text-center bg-cover bg-center" style={{ 
         backgroundImage: "url('/images/food-bg.jpg')",
-        marginTop: '-64px', // Compensate for navbar height
-        paddingTop: '64px' // Ensure content starts below navbar
+        // marginTop: '-64px',
+        // paddingTop: '64px'
       }}>
         <div className="bg-white/70 p-8 rounded-xl shadow-xl max-w-2xl mx-4">
           <h1 className="text-5xl md:text-6xl font-serif font-semibold text-gray-900 mb-4">Best food for your taste</h1>
@@ -119,6 +139,7 @@ export default function HomePage() {
         </div>
       </section>
 
+ 
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-16 px-6">
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12">
@@ -161,11 +182,11 @@ export default function HomePage() {
                   <path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"></path>
                 </svg>
               </Link>
-              {/* Add other social icons similarly */}
+              {/* Add more social links here if needed */}
             </div>
           </div>
         </div>
-        
+
         <div className="border-t border-gray-800 mt-12 pt-8 text-center text-gray-400">
           <p>Copyright © 2023 Restaurant. All Rights Reserved</p>
         </div>
