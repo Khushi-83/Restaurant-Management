@@ -146,7 +146,18 @@ export default function FeedbackForm() {
           ))}
         </div>
 
-        
+        {/* Comments */}
+        <div className="mt-10">
+          <Label htmlFor="comments" className="text-sm text-gray-700">
+            Any comments, questions or suggestions?
+          </Label>
+          <Textarea
+            id="comments"
+            placeholder="Type here..."
+            rows={4}
+            className="mt-2 bg-white border-blue-200 focus:border-blue-500"
+          />
+        </div>
 
         {/* Submit Button */}
         <Button className="mt-10 w-full bg-gradient-to-r from-blue-600 to-indigo-500 hover:from-indigo-600 hover:to-blue-700 text-white font-bold py-3 text-lg shadow-md">
