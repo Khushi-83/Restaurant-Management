@@ -15,7 +15,15 @@ export default function CartPage() {
       {cart.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-xl mb-4">Your cart is empty</p>
-          <Link href="/menu" className="text-blue-600 hover:underline">
+          <Link 
+            href="/#menu" 
+            className="text-blue-600 hover:underline"
+            onClick={(e) => {
+              e.preventDefault();
+              window.location.href = '/#menu';
+              document.getElementById('menu')?.scrollIntoView({ behavior: 'smooth' });
+            }}
+          >
             Browse our menu
           </Link>
         </div>

@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Menu, X, ShoppingCart } from "lucide-react";
 import { CartProvider, useCart } from '@/contexts/cartContext';
 import Notification from "@/components/Notifications";
+import 'antd/dist/reset.css'; // Add this import
 
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

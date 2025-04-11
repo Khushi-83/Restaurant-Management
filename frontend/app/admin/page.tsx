@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Layout, Menu, theme, message, notification } from 'antd';
+import { Layout, Menu, theme, message, notification, ConfigProvider } from 'antd';
 import {
   AppstoreOutlined,
   ShoppingCartOutlined,
@@ -23,24 +23,33 @@ export default function AdminDashboard() {
     token: { colorBgContainer },
   } = theme.useToken();
 
-  // Real-Time Setup
+  // Real-Time Setup with error handling
   useEffect(() => {
-    socket.connect();
-    
-    socket.on('order_update', (order) => {
-      message.success(`New order from Table ${order.table_number}`);
-    });
-    
-    socket.on('new_message', (msg) => {
-      notification.info({
-        message: `Message from ${msg.sender}`,
-        description: msg.message,
+    try {
+      socket.connect();
+      
+      socket.on('connect_error', (error) => {
+        console.error('Socket connection error:', error);
+        message.error('Failed to connect to real-time updates');
       });
-    });
+      
+      socket.on('order_update', (order) => {
+        message.success(`New order from Table ${order.table_number}`);
+      });
+      
+      socket.on('new_message', (msg) => {
+        notification.info({
+          message: `Message from ${msg.sender}`,
+          description: msg.message,
+        });
+      });
 
-    return () => {
-      socket.disconnect();
-    };
+      return () => {
+        socket.disconnect();
+      };
+    } catch (error) {
+      console.error('Socket setup error:', error);
+    }
   }, []);
 
   const renderContent = () => {
@@ -57,96 +66,92 @@ export default function AdminDashboard() {
   };
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Sider 
-        collapsible 
-        collapsed={collapsed} 
-        onCollapse={(value: boolean) => setCollapsed(value)}
-        width={250}
-      >
-        <div className="demo-logo-vertical" style={{
-          height: '64px',
-          margin: '16px',
-          background: 'rgba(255, 255, 255, 0.2)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'white',
-          fontSize: '18px',
-          fontWeight: 'bold'
-        }}>
-          {collapsed ? 'RMS' : 'Restaurant Admin'}
-        </div>
-        <Menu
-          theme="dark"
-          defaultSelectedKeys={['orders']}
-          mode="inline"
-          onSelect={(info: { key: string }) => setActiveTab(info.key)}
-          items={[
-            {
-              key: 'orders',
-              icon: <ShoppingCartOutlined />,
-              label: 'Orders',
-            },
-            {
-              key: 'preferences',
-              icon: <UserOutlined />,
-              label: 'Customer Preferences',
-            },
-            {
-              key: 'menu',
-              icon: <AppstoreOutlined />,
-              label: 'Menu Management',
-            },
-            {
-              key: 'feedback',
-              icon: <StarOutlined />,
-              label: 'Customer Feedback',
-            },
-            {
-              key: 'reports',
-              icon: <PieChartOutlined />,
-              label: 'Daily Reports',
-            },
-            {
-              key: 'messages',
-              icon: <MessageOutlined />,
-              label: 'Customer Messages',
-            },
-            {
-              key: 'music',
-              icon: <AudioOutlined />,
-              label: 'Song Requests',
-            },
-            {
-              key: 'settings',
-              icon: <SettingOutlined />,
-              label: 'Settings',
-            },
-          ]}
-        />
-      </Sider>
-      <Layout>
-        <Header style={{ padding: 0, background: colorBgContainer }} />
-        <Content style={{ margin: '24px 16px 0', overflow: 'initial' }}>
-          <div style={{ 
-            padding: 24, 
-            background: colorBgContainer,
-            borderRadius: '8px'
-          }}>
-            {renderContent()}
+    <ConfigProvider>
+      <Layout style={{ minHeight: '100vh' }}>
+        <Sider 
+          collapsible 
+          collapsed={collapsed} 
+          onCollapse={(value: boolean) => setCollapsed(value)}
+          width={250}
+          className="min-h-screen"
+        >
+          <div className="h-16 m-4 bg-white/20 flex items-center justify-center text-white text-lg font-bold">
+            {collapsed ? 'RMS' : 'Restaurant Admin'}
           </div>
-        </Content>
+          <Menu
+            theme="dark"
+            defaultSelectedKeys={['orders']}
+            mode="inline"
+            onSelect={({ key }) => setActiveTab(key)}
+            items={[
+              {
+                key: 'orders',
+                icon: <ShoppingCartOutlined />,
+                label: 'Orders',
+              },
+              {
+                key: 'preferences',
+                icon: <UserOutlined />,
+                label: 'Customer Preferences',
+              },
+              {
+                key: 'menu',
+                icon: <AppstoreOutlined />,
+                label: 'Menu Management',
+              },
+              {
+                key: 'feedback',
+                icon: <StarOutlined />,
+                label: 'Customer Feedback',
+              },
+              {
+                key: 'reports',
+                icon: <PieChartOutlined />,
+                label: 'Daily Reports',
+              },
+              {
+                key: 'messages',
+                icon: <MessageOutlined />,
+                label: 'Customer Messages',
+              },
+              {
+                key: 'music',
+                icon: <AudioOutlined />,
+                label: 'Song Requests',
+              },
+              {
+                key: 'settings',
+                icon: <SettingOutlined />,
+                label: 'Settings',
+              },
+            ]}
+          />
+        </Sider>
+        <Layout>
+          <Header style={{ padding: 0, background: colorBgContainer }} />
+          <Content style={{ margin: '24px 16px 0', overflow: 'initial' }}>
+            <div style={{ 
+              padding: 24, 
+              background: colorBgContainer,
+              borderRadius: '8px',
+              minHeight: '280px'
+            }}>
+              {renderContent()}
+            </div>
+          </Content>
+        </Layout>
       </Layout>
-    </Layout>
+    </ConfigProvider>
   );
 }
 
-// Placeholder components for each panel
+// Add some actual content to the OrdersPanel as an example
 const OrdersPanel = () => (
-  <div>
-    <h2>Current Orders</h2>
-    {/* Order management table will go here */}
+  <div className="space-y-4">
+    <h2 className="text-2xl font-bold">Current Orders</h2>
+    <div className="bg-white p-4 rounded-lg shadow">
+      <p className="text-gray-600">No active orders at the moment</p>
+    </div>
   </div>
 );
 
