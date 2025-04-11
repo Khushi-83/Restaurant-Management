@@ -1,58 +1,14 @@
 'use client';
 import Link from 'next/link';
 import Image from 'next/image';
-import { cn } from '@/lib/utils';
-import { useEffect, useState } from 'react';
-import { Menu, X } from 'lucide-react';
+//import { cn } from '@/lib/utils';
+//import { useEffect, useState } from 'react';
 
 export default function HomePage() {
-  const [scrolled, setScrolled] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 50);
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  const toggleMenu = () => {
-    setIsMenuOpen((prev) => !prev);
-  };
-
   return (
     <div className="relative">
-      {/* Navbar with scroll effect */}
-      <nav className={cn(
-        "fixed top-0 left-0 w-full z-50 transition-all duration-300",
-        scrolled ? "bg-white/90 backdrop-blur-sm shadow-sm" : "bg-transparent"
-      )}>
-        <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-          <Link href="/" className="text-2xl font-bold text-gray-900">Restaurant</Link>
-          <div className="hidden md:flex space-x-8">
-            <Link href="/" className="text-gray-900 hover:text-red-600">Home</Link>
-            <Link href="/feedback" className="text-gray-900 hover:text-red-600">Feedback</Link>
-            <Link href="/chat" className="text-gray-900 hover:text-red-600">Chat</Link>
-            <Link href="/order-status" className="text-gray-900 hover:text-red-600">Order Status</Link>
-            <Link href="/cart" className="text-gray-900 hover:text-red-600">Cart</Link>
-            <Link href="/menu" className="text-gray-900 hover:text-red-600">Menu</Link>
-          </div>
-          <button onClick={toggleMenu} className="md:hidden text-gray-900">
-            {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
-        </div>
-        {isMenuOpen && (
-          <div className="md:hidden px-6 pb-4 flex flex-col space-y-4 bg-white shadow-md">
-            <Link href="/" className="text-gray-900 hover:text-red-600">Home</Link>
-            <Link href="/feedback" className="text-gray-900 hover:text-red-600">Feedback</Link>
-            <Link href="/chat" className="text-gray-900 hover:text-red-600">Chat</Link>
-            <Link href="/order-status" className="text-gray-900 hover:text-red-600">Order Status</Link>
-            <Link href="/cart" className="text-gray-900 hover:text-red-600">Cart</Link>
-            <Link href="/menu" className="text-gray-900 hover:text-red-600">Menu</Link>
-          </div>
-        )}
-      </nav>
+
+
 
       {/* Full-page Hero Section */}
       <section className="relative h-screen w-full flex items-center justify-center text-center bg-cover bg-center" style={{ 

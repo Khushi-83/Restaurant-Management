@@ -8,6 +8,7 @@ import { Menu, X, ShoppingCart } from "lucide-react";
 import { CartProvider, useCart } from '@/contexts/cartContext';
 import Notification from "@/components/Notifications";
 
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -18,31 +19,36 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <title>Restaurant Management</title>
           <meta name="viewport" content="width=device-width, initial-scale=1" />
         </head>
-        <body className="bg-gray-100">
+        <body className="min-h-screen flex flex-col bg-gray-100">
           {/* Navbar */}
-          <div className="bg-white shadow-md w-full px-6 py-4 flex items-center">
-            <h1 className="text-xl font-semibold text-gray-800">Restaurant</h1>
+          <header className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-sm shadow-sm">
+            <div className="w-full px-6 py-2 flex items-center">
+              {/* Made Restaurant text clickable with Link component */}
+              <Link href="/" className="text-xl font-semibold text-gray-800 hover:text-gray-600 transition-colors">
+                Restaurant
+              </Link>
+              
+              {/* Desktop Navigation */}
+              <nav className="ml-auto hidden md:flex items-center space-x-6">
+                <DesktopNavigation />
+              </nav>
 
-            {/* Desktop Navigation */}
-            <nav className="ml-auto hidden md:flex items-center space-x-6">
-              <DesktopNavigation />
-            </nav>
-
-            {/* Mobile Menu Button */}
-            <button 
-              className="md:hidden ml-auto" 
-              onClick={() => setIsOpen(!isOpen)}
-              aria-label="Toggle menu"
-            >
-              {isOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
-          </div>
-
-          {/* Mobile Dropdown Menu */}
-          {isOpen && <MobileNavigation closeMenu={() => setIsOpen(false)} />}
+              {/* Mobile Menu Button */}
+              <button 
+                className="md:hidden ml-auto" 
+                onClick={() => setIsOpen(!isOpen)}
+                aria-label="Toggle menu"
+              >
+                {isOpen ? <X size={24} /> : <Menu size={24} />}
+              </button>
+            </div>
+            
+            {/* Mobile Dropdown Menu */}
+            {isOpen && <MobileNavigation closeMenu={() => setIsOpen(false)} />}
+          </header>
 
           {/* Main Content */}
-          <main className="p-6">{children}</main>
+          <main className="flex-grow pt-[48px]">{children}</main>
 
           {/* Notification System */}
           <NotificationWrapper />
