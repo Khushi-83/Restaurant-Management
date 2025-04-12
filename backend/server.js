@@ -14,12 +14,14 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: process.env.NODE_ENV === "production" 
-      ? [process.env.FRONTEND_URL, "https://your-admin-dashboard.com"] 
-      : ["http://localhost:3000", "http://localhost:3001"],
+      ? [process.env.FRONTEND_URL]
+      : ["http://localhost:3000"],
     methods: ["GET", "POST"],
     credentials: true
   },
-  transports: ['websocket', 'polling'] // Enable both transports for reliability
+  transports: ['websocket', 'polling'],
+  pingTimeout: 60000,
+  pingInterval: 25000
 });
 
 const port = process.env.PORT || 5000;
@@ -27,7 +29,7 @@ const port = process.env.PORT || 5000;
 // Middleware
 app.use(cors({
   origin: process.env.NODE_ENV === "production" 
-    ? [process.env.FRONTEND_URL, "https://your-admin-dashboard.com"]
+    ? [process.env.FRONTEND_URL, "http://localhost:3000/admin"]
     : ["http://localhost:3000", "http://localhost:3001"],
   credentials: true
 }));
@@ -211,6 +213,24 @@ app.post("/api/payments/webhook", express.json(), async (req, res) => {
 });
 
 // Chat Routes - Enhanced with proper validation
+app.get("/api/chat/messages", async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("chat_messages")
+      .select("*")
+      .order("timestamp", { ascending: true });
+
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    console.error("Chat messages fetch error:", err);
+    res.status(500).json({ 
+      error: "Failed to fetch messages",
+      details: process.env.NODE_ENV === "development" ? err.message : undefined
+    });
+  }
+});
+
 app.post("/api/chat", async (req, res) => {
   try {
     const { sender, message, table_number } = req.body;
@@ -245,7 +265,7 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
-// WebSocket Connections - Enhanced with admin room
+// Socket connection handling
 io.on("connection", (socket) => {
   console.log(`Client connected: ${socket.id}`);
   
@@ -260,9 +280,45 @@ io.on("connection", (socket) => {
     socket.join(`table_${tableNo}`);
     console.log(`Socket ${socket.id} joined table ${tableNo}`);
   });
+
+  // Handle feedback submission
+  socket.on("submit_feedback", async (feedbackData) => {
+    try {
+      // Store feedback in database
+      const { error } = await supabase
+        .from("feedback")
+        .insert([{
+          ...feedbackData,
+          socket_id: socket.id,
+          created_at: new Date().toISOString()
+        }]);
+
+      if (error) throw error;
+
+      // Send confirmation to the submitting client
+      socket.emit("feedback_received");
+
+      // Notify admin dashboard
+      io.to("admin_room").emit("new_feedback", {
+        ...feedbackData,
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (err) {
+      console.error("Feedback submission error:", err);
+      socket.emit("feedback_error", { 
+        message: "Failed to submit feedback"
+      });
+    }
+  });
+
+  // Error handling
+  socket.on("error", (error) => {
+    console.error(`Socket ${socket.id} error:`, error);
+  });
   
-  socket.on("disconnect", () => {
-    console.log(`Client disconnected: ${socket.id}`);
+  socket.on("disconnect", (reason) => {
+    console.log(`Client disconnected: ${socket.id}, reason: ${reason}`);
   });
 });
 
@@ -278,6 +334,6 @@ app.use((err, req, res, next) => {
 server.listen(port, () => {
   console.log(`Server running on port ${port}`);
   console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
-  console.log(`CORS allowed origins: ${process.env.FRONTEND_URL || "http://localhost:3000"}, https://your-admin-dashboard.com`);
+  console.log(`CORS allowed origins: ${process.env.FRONTEND_URL || "http://localhost:3000"}, http://localhost:3000/admin`);
   console.log(`WebSocket server ready`);
 });

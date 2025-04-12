@@ -1,20 +1,67 @@
 "use client";
 
-import React, { useState } from "react";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
+import React, { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Calendar } from "@/components/ui/calendar";
+import { ChevronRight } from "lucide-react";
+import { socket } from "@/lib/socket";
+import { toast } from "sonner";
 
 export default function FeedbackForm() {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [time, setTime] = useState("19:30");
+  const [isConnected, setIsConnected] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    diningOption: "",
+    ratings: {} as Record<string, string>,
+    comments: ""
+  });
+
+  // Connect to socket when component mounts
+  useEffect(() => {
+    socket.connect();
+
+    socket.on("connect", () => {
+      setIsConnected(true);
+      setConnectionError(null);
+      toast.success("Connected to server");
+    });
+
+    socket.on("connect_error", (error) => {
+      setIsConnected(false);
+      setConnectionError(error.message);
+      toast.error(`Connection error: ${error.message}`);
+    });
+
+    socket.on("disconnect", (reason) => {
+      setIsConnected(false);
+      toast.error(`Disconnected: ${reason}`);
+    });
+
+    // Listen for feedback submission confirmation
+    socket.on("feedback_received", () => {
+      toast.success("Thank you for your feedback! We appreciate your input.");
+    });
+
+    socket.on("feedback_error", (error) => {
+      toast.error(`Error: ${error.message}`);
+    });
+
+    // Cleanup on unmount
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
 
   const categories = [
     "Food Quality",
@@ -24,146 +71,192 @@ export default function FeedbackForm() {
   ];
 
   const options = [
-    { label: "Excellent", icon: "😄", color: "bg-green-100 border-green-500" },
-    { label: "Good", icon: "🙂", color: "bg-blue-100 border-blue-500" },
-    { label: "Average", icon: "😐", color: "bg-yellow-100 border-yellow-500" },
-    { label: "Dissatisfied", icon: "😞", color: "bg-red-100 border-red-500" },
+    { label: "Excellent", icon: "😄", color: "bg-green-100 border-green-500 hover:bg-green-200" },
+    { label: "Good", icon: "🙂", color: "bg-blue-100 border-blue-500 hover:bg-blue-200" },
+    { label: "Average", icon: "😐", color: "bg-yellow-100 border-yellow-500 hover:bg-yellow-200" },
+    { label: "Dissatisfied", icon: "😞", color: "bg-red-100 border-red-500 hover:bg-red-200" },
   ];
 
+  const handleSubmit = async () => {
+    try {
+      const feedbackData = {
+        ...formData,
+        date: date?.toISOString(),
+        time,
+        submitted_at: new Date().toISOString()
+      };
+
+      // Emit feedback data through socket
+      socket.emit("submit_feedback", feedbackData);
+
+      // Reset form
+      setFormData({
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        diningOption: "",
+        ratings: {},
+        comments: ""
+      });
+      setDate(new Date());
+      setTime("19:30");
+
+    } catch (error) {
+      console.error("Error submitting feedback:", error);
+      toast.error("Failed to submit feedback. Please try again.");
+    }
+  };
+
   return (
-    <Card className="max-w-5xl mx-auto mt-10 p-6 md:p-10 shadow-2xl rounded-3xl border border-gray-200 bg-gradient-to-br from-white via-sky-50 to-blue-100">
-      <CardContent>
-        <h2 className="text-4xl font-extrabold text-center mb-10 text-gray-800">
-          We appreciate your feedback!
-        </h2>
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12 px-4 sm:px-6">
+      {/* Connection Status */}
+      <div className={`fixed top-4 right-4 px-4 py-2 rounded-full text-sm font-medium ${
+        isConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+      }`}>
+        {isConnected ? 'Connected' : connectionError || 'Disconnected'}
+      </div>
 
-        {/* User Info Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div>
-            <Label>Name</Label>
-            <div className="flex gap-2 mt-2">
-              <Input
-                placeholder="First Name"
-                className="w-1/2 bg-white border-blue-200 focus:border-blue-500"
-              />
-              <Input
-                placeholder="Last Name"
-                className="w-1/2 bg-white border-blue-200 focus:border-blue-500"
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label>Email</Label>
-            <Input
-              type="email"
-              placeholder="example@example.com"
-              className="mt-2 bg-white border-blue-200 focus:border-blue-500"
-            />
-          </div>
-
-          <div>
-            <Label>Phone Number</Label>
-            <Input
-              type="tel"
-              placeholder="(000) 000-0000"
-              className="mt-2 bg-white border-blue-200 focus:border-blue-500"
-            />
-          </div>
-
-          <div>
-            <Label>Dine In / Take Out</Label>
-            <ToggleGroup type="single" className="mt-2 flex gap-3">
-              <ToggleGroupItem
-                value="dine"
-                className="px-4 py-2 rounded-lg border text-sm data-[state=on]:bg-green-100 data-[state=on]:border-green-500"
-              >
-                Dine In
-              </ToggleGroupItem>
-              <ToggleGroupItem
-                value="takeout"
-                className="px-4 py-2 rounded-lg border text-sm data-[state=on]:bg-purple-100 data-[state=on]:border-purple-500"
-              >
-                Take Out
-              </ToggleGroupItem>
-            </ToggleGroup>
-          </div>
+      {/* Hero Section */}
+      <div className="text-center mb-10">
+        <div className="inline-flex items-center justify-center bg-red-100 px-4 py-2 rounded-full mb-4 text-red-800 text-sm font-medium">
+          Share Your Experience
         </div>
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif font-semibold text-gray-900 mb-4">
+          We Value Your Feedback
+        </h1>
+        <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto">
+          Your opinion helps us improve our service and create better dining experiences for everyone.
+        </p>
+      </div>
 
-        {/* Date & Time */}
-        <div className="flex flex-col md:flex-row md:items-end gap-6 mb-10">
-          <div>
-            <Label className="text-gray-600">Day Visited</Label>
-            <Calendar
-              mode="single"
-              selected={date}
-              onSelect={(selectedDate) => {
-                if (selectedDate) setDate(selectedDate);
-              }}
-              className="mt-2 border rounded-md shadow-sm"
-            />
-          </div>
-          <div className="flex gap-2">
-            <div>
-              <Label>Time</Label>
+      <Card className="max-w-4xl mx-auto shadow-xl rounded-2xl border border-gray-200 bg-white/80 backdrop-blur-sm">
+        <CardContent className="p-6 sm:p-8 md:p-10">
+          {/* User Info Section */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div className="space-y-2">
+              <Label className="text-gray-700">Name</Label>
+              <div className="flex gap-3">
+                <Input
+                  placeholder="First Name"
+                  className="bg-white/50 border-gray-200 focus:border-red-500 transition-colors"
+                />
+                <Input
+                  placeholder="Last Name"
+                  className="bg-white/50 border-gray-200 focus:border-red-500 transition-colors"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-gray-700">Email</Label>
               <Input
-                type="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className="mt-2 w-28 border-blue-300"
+                type="email"
+                placeholder="example@email.com"
+                className="bg-white/50 border-gray-200 focus:border-red-500 transition-colors"
               />
             </div>
-            <div>
-              <Label>Period</Label>
-              <select className="mt-2 w-20 h-10 border rounded-md border-blue-300">
-                <option>AM</option>
-                <option>PM</option>
-              </select>
-            </div>
-          </div>
-        </div>
 
-        {/* Ratings Section */}
-        <div className="space-y-8">
-          {categories.map((category) => (
-            <div key={category}>
-              <Label className="block mb-3 text-gray-700 font-medium">
-                {category}
-              </Label>
-              <ToggleGroup type="single" className="flex gap-3 flex-wrap">
-                {options.map((opt) => (
-                  <ToggleGroupItem
-                    key={opt.label}
-                    value={opt.label.toLowerCase()}
-                    className={`flex items-center gap-2 px-4 py-2 border rounded-xl transition hover:scale-105 ${opt.color} data-[state=on]:scale-110`}
-                  >
-                    <span className="text-lg">{opt.icon}</span>
-                    <span className="text-sm font-semibold">{opt.label}</span>
-                  </ToggleGroupItem>
-                ))}
+            <div className="space-y-2">
+              <Label className="text-gray-700">Phone Number</Label>
+              <Input
+                type="tel"
+                placeholder="(000) 000-0000"
+                className="bg-white/50 border-gray-200 focus:border-red-500 transition-colors"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-gray-700">Dining Option</Label>
+              <ToggleGroup type="single" className="flex gap-3">
+                <ToggleGroupItem
+                  value="dine"
+                  className="px-4 py-2 rounded-lg border text-sm bg-white/50 data-[state=on]:bg-red-100 data-[state=on]:border-red-500 transition-all"
+                >
+                  Dine In
+                </ToggleGroupItem>
+                <ToggleGroupItem
+                  value="takeout"
+                  className="px-4 py-2 rounded-lg border text-sm bg-white/50 data-[state=on]:bg-red-100 data-[state=on]:border-red-500 transition-all"
+                >
+                  Take Out
+                </ToggleGroupItem>
               </ToggleGroup>
             </div>
-          ))}
-        </div>
+          </div>
 
-        {/* Comments */}
-        <div className="mt-10">
-          <Label htmlFor="comments" className="text-sm text-gray-700">
-            Any comments, questions or suggestions?
-          </Label>
-          <Textarea
-            id="comments"
-            placeholder="Type here..."
-            rows={4}
-            className="mt-2 bg-white border-blue-200 focus:border-blue-500"
-          />
-        </div>
+          {/* Date & Time Section */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+            <div className="space-y-2">
+              <Label className="text-gray-700">Day Visited</Label>
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={setDate}
+                className="border rounded-lg shadow-sm bg-white"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-gray-700">Time of Visit</Label>
+              <div className="flex gap-3">
+                <Input
+                  type="time"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  className="bg-white/50 border-gray-200 focus:border-red-500"
+                />
+                <select 
+                  className="px-3 py-2 rounded-lg border border-gray-200 bg-white/50 focus:border-red-500 outline-none"
+                  aria-label="Time period"
+                >
+                  <option>AM</option>
+                  <option>PM</option>
+                </select>
+              </div>
+            </div>
+          </div>
 
-        {/* Submit Button */}
-        <Button className="mt-10 w-full bg-gradient-to-r from-blue-600 to-indigo-500 hover:from-indigo-600 hover:to-blue-700 text-white font-bold py-3 text-lg shadow-md">
-          Submit Feedback
-        </Button>
-      </CardContent>
-    </Card>
+          {/* Ratings Section */}
+          <div className="space-y-8">
+            {categories.map((category) => (
+              <div key={category} className="space-y-3">
+                <Label className="text-gray-700 font-medium">{category}</Label>
+                <ToggleGroup type="single" className="flex flex-wrap gap-3">
+                  {options.map((opt) => (
+                    <ToggleGroupItem
+                      key={opt.label}
+                      value={opt.label.toLowerCase()}
+                      className={`flex items-center gap-2 px-4 py-2 border rounded-xl ${opt.color} transition-all duration-200 hover:scale-105 data-[state=on]:scale-110`}
+                    >
+                      <span className="text-lg">{opt.icon}</span>
+                      <span className="text-sm font-medium">{opt.label}</span>
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
+              </div>
+            ))}
+          </div>
+
+          {/* Comments Section */}
+          <div className="mt-10 space-y-2">
+            <Label className="text-gray-700">Additional Comments</Label>
+            <Textarea
+              placeholder="Share your thoughts with us..."
+              rows={4}
+              className="bg-white/50 border-gray-200 focus:border-red-500 transition-colors"
+            />
+          </div>
+
+          {/* Submit Button */}
+          <Button 
+            onClick={handleSubmit}
+            className="mt-10 w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-6 text-lg rounded-xl transform transition-all duration-200 hover:scale-[1.02]"
+          >
+            Submit Feedback
+            <ChevronRight className="ml-2 h-5 w-5" />
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
