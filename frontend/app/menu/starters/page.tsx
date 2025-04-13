@@ -63,7 +63,10 @@ const FoodCard = ({ item }: { item: FoodItem }) => {
         
         {/* Add Button */}
         <button 
-          onClick={() => addToCart(item)}
+          onClick={() => addToCart({
+            ...item,
+            id: item.id.toString()
+          })}
           className="mt-3 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition"
         >
           Add
