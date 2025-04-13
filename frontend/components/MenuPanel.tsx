@@ -1,122 +1,41 @@
-import { Table, Button, Form, Input, InputNumber, Select, Popconfirm, Tag, Space, message, Upload } from 'antd';
+import { Table, Button, Form, Input, InputNumber, Select, Popconfirm, Tag, Space, message } from 'antd';
 import { useState, useEffect } from 'react';
-import { PlusOutlined, LoadingOutlined } from '@ant-design/icons';
 import styles from './MenuPanel.module.css';
+import Image from 'next/image';
 
 const { Option } = Select;
 
 interface MenuItem {
+  id: string;
   key: string;
-  id?: string;
   name: string;
   category: string;
   price: number;
   description: string;
   available: boolean;
   image_url?: string;
-  quantity_per_serve?: number;
-}
-
-interface MenuFormValues {
-  name: string;
-  category: string;
-  price: number;
-  description?: string;
-  quantity_per_serve?: number;
 }
 
 export default function MenuPanel() {
   const [form] = Form.useForm();
   const [editingKey, setEditingKey] = useState('');
-  const [data, setData] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [imageUrl, setImageUrl] = useState<string>();
-  const [uploadLoading, setUploadLoading] = useState(false);
+  const [data, setData] = useState<MenuItem[]>([]);
 
-  // Fetch menu items on component mount
   useEffect(() => {
     fetchMenuItems();
   }, []);
 
   const fetchMenuItems = async () => {
     try {
+      setLoading(true);
       const response = await fetch('/api/food-items');
       if (!response.ok) throw new Error('Failed to fetch menu items');
       const items = await response.json();
-      setData(items.map((item: MenuItem) => ({
-        ...item,
-        key: item.id || item.key || Date.now().toString()
-      })));
-    } catch (err) {
-      console.error('Failed to fetch menu items:', err);
-      message.error('Failed to load menu items');
-    }
-  };
-
-  const handleImageUpload = async (file: File) => {
-    try {
-      setUploadLoading(true);
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to upload image');
-      }
-
-      const data = await response.json();
-      setImageUrl(data.url);
-      return data.url;
-    } catch (err) {
-      message.error('Failed to upload image');
-      console.error('Upload error:', err);
-    } finally {
-      setUploadLoading(false);
-    }
-  };
-
-  const handleAddItem = async (values: MenuFormValues) => {
-    try {
-      setLoading(true);
-
-      if (!imageUrl) {
-        message.error('Please upload an image');
-        setLoading(false);
-        return;
-      }
-
-      const menuItem = {
-        name: values.name,
-        price: values.price,
-        description: values.description || '',
-        category: values.category,
-        image_url: imageUrl,
-        quantity_per_serve: values.quantity_per_serve,
-        available: true
-      };
-
-      const response = await fetch('/api/food-items', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(menuItem)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to add menu item');
-      }
-
-      await fetchMenuItems();
-      message.success('Menu item added successfully');
-      form.resetFields();
-      setImageUrl(undefined);
-    } catch (err) {
-      console.error('Failed to add menu item:', err);
-      message.error(err instanceof Error ? err.message : 'Failed to add menu item');
+      setData(items.map((item: MenuItem) => ({ ...item, key: item.id })));
+    } catch {
+      message.error('Failed to fetch menu items');
     } finally {
       setLoading(false);
     }
@@ -127,6 +46,7 @@ export default function MenuPanel() {
   const edit = (record: Partial<MenuItem> & { key: React.Key }) => {
     form.setFieldsValue({ ...record });
     setEditingKey(record.key);
+    setImageUrl(record.image_url);
   };
 
   const save = async (key: React.Key) => {
@@ -136,80 +56,63 @@ export default function MenuPanel() {
       const index = newData.findIndex((item) => key === item.key);
 
       if (index > -1) {
-        const item = newData[index];
-        const updatedItem = { ...item, ...row };
-        
-        const response = await fetch(`/api/food-items/${item.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updatedItem)
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to update menu item');
-        }
-
+        const updatedItem = { ...newData[index], ...row, image_url: imageUrl };
         newData[index] = updatedItem;
         setData(newData);
         setEditingKey('');
+
+        // Update in backend
+        const response = await fetch(`/api/food-items/${key}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedItem),
+        });
+
+        if (!response.ok) throw new Error('Failed to update item');
         message.success('Item updated successfully');
       }
-    } catch (err) {
-      console.error('Update failed:', err);
+    } catch (errInfo) {
+      console.log('Validate Failed:', errInfo);
       message.error('Failed to update item');
     }
   };
 
   const handleDelete = async (key: string) => {
     try {
-      const item = data.find(item => item.key === key);
-      if (!item?.id) {
-        setData(data.filter((item) => item.key !== key));
-        return;
-      }
-
-      const response = await fetch(`/api/food-items/${item.id}`, {
-        method: 'DELETE'
+      const response = await fetch(`/api/food-items/${key}`, {
+        method: 'DELETE',
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to delete item');
-      }
-
+      if (!response.ok) throw new Error('Failed to delete item');
+      
       setData(data.filter((item) => item.key !== key));
       message.success('Item deleted successfully');
-    } catch (err) {
-      console.error('Delete failed:', err);
+    } catch {
       message.error('Failed to delete item');
     }
   };
 
   const handleAdd = () => {
-    form.resetFields();
-    setImageUrl(undefined);
-    form.validateFields()
-      .then((values) => {
-        handleAddItem(values as MenuFormValues);
-      })
-      .catch((info) => {
-        console.log('Validate Failed:', info);
-      });
+    const newItem: MenuItem = {
+      id: Date.now().toString(),
+      key: Date.now().toString(),
+      name: 'New Item',
+      category: 'Starters',
+      price: 0,
+      description: '',
+      available: true,
+    };
+    setData([...data, newItem]);
+    edit(newItem);
   };
-
-  const uploadButton = (
-    <div>
-      {uploadLoading ? <LoadingOutlined /> : <PlusOutlined />}
-      <div style={{ marginTop: 8 }}>Upload</div>
-    </div>
-  );
 
   const columns = [
     {
       title: 'Image',
       dataIndex: 'image_url',
-      key: 'image',
+      key: 'image_url',
       render: (url: string) => url ? (
-        <img src={url} alt="Menu item" style={{ width: 50, height: 50, objectFit: 'cover' }} />
+        <Image src={url} alt="Menu item" style={{ width: 50, height: 50, objectFit: 'cover' }} />
       ) : null,
     },
     {
@@ -245,7 +148,7 @@ export default function MenuPanel() {
     {
       title: 'Action',
       dataIndex: 'operation',
-      render: (_unused: unknown, record: MenuItem) => {
+      render: (_: unknown, record: MenuItem) => {
         const editable = isEditing(record);
         return editable ? (
           <span>
@@ -271,34 +174,12 @@ export default function MenuPanel() {
   ];
 
   return (
-    <div className={styles.container}>
+    <div>
       <div className={styles.header}>
         <h2>Menu Management</h2>
-        <Space>
-          <Upload
-            name="file"
-            listType="picture-card"
-            showUploadList={false}
-            beforeUpload={async (file) => {
-              await handleImageUpload(file);
-              return false;
-            }}
-          >
-            {imageUrl ? (
-              <img src={imageUrl} alt="Menu item" style={{ width: '100%' }} />
-            ) : (
-              uploadButton
-            )}
-          </Upload>
-          <Button 
-            onClick={handleAdd} 
-            type="primary" 
-            className={styles.addBtn}
-            loading={loading}
-          >
-            Add New Item
-          </Button>
-        </Space>
+        <Button onClick={handleAdd} type="primary" className={styles.addBtn}>
+          Add New Item
+        </Button>
       </div>
       <Form form={form} component={false}>
         <Table
@@ -309,70 +190,39 @@ export default function MenuPanel() {
           }}
           bordered
           dataSource={data}
-          columns={columns.map(col => ({
-            ...col,
-            onCell: (record: MenuItem) => ({
-              record,
-              editable: col.editable,
-              dataIndex: col.dataIndex,
-              title: col.title,
-              editing: isEditing(record),
-            }),
-          }))}
+          columns={columns}
           rowClassName="editable-row"
-          pagination={{
-            onChange: () => setEditingKey(''),
-            pageSize: 10
-          }}
+          pagination={{ pageSize: 10 }}
+          loading={loading}
         />
       </Form>
     </div>
   );
 }
 
-interface EditableCellProps extends React.HTMLAttributes<HTMLElement> {
+interface EditableCellProps {
   editing: boolean;
   dataIndex: keyof MenuItem;
   title: string;
-  record: MenuItem;
-  index: number;
+  inputType: 'number' | 'text' | 'boolean';
   children: React.ReactNode;
 }
 
-const EditableCell: React.FC<EditableCellProps> = ({
+const EditableCell: React.FC<EditableCellProps & React.HTMLAttributes<HTMLElement>> = ({
   editing,
   dataIndex,
   title,
+  inputType,
   children,
   ...restProps
 }) => {
-  let inputNode;
-  
-  switch(dataIndex) {
-    case 'category':
-      inputNode = (
-        <Select>
-          <Option value="Starters">Starters</Option>
-          <Option value="Main Course">Main Course</Option>
-          <Option value="Beverages">Beverages</Option>
-          <Option value="Desserts">Desserts</Option>
-        </Select>
-      );
-      break;
-    case 'price':
-      inputNode = <InputNumber min={0} />;
-      break;
-    case 'available':
-      inputNode = (
-        <Select>
-          <Option value={true}>Available</Option>
-          <Option value={false}>Unavailable</Option>
-        </Select>
-      );
-      break;
-    default:
-      inputNode = <Input />;
-  }
+  const inputNode = inputType === 'number' ? <InputNumber /> : 
+                    inputType === 'boolean' ? (
+                      <Select>
+                        <Option value={true}>Available</Option>
+                        <Option value={false}>Unavailable</Option>
+                      </Select>
+                    ) : <Input />;
 
   return (
     <td {...restProps}>
@@ -382,7 +232,16 @@ const EditableCell: React.FC<EditableCellProps> = ({
           style={{ margin: 0 }}
           rules={[{ required: true, message: `Please Input ${title}!` }]}
         >
-          {inputNode}
+          {dataIndex === 'category' ? (
+            <Select>
+              <Option value="Starters">Starters</Option>
+              <Option value="Main Course">Main Course</Option>
+              <Option value="Beverages">Beverages</Option>
+              <Option value="Desserts">Desserts</Option>
+            </Select>
+          ) : (
+            inputNode
+          )}
         </Form.Item>
       ) : (
         children

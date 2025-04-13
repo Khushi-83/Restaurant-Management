@@ -144,14 +144,14 @@ function MobileNavigation({ closeMenu }: { closeMenu: () => void }) {
 }
 
 // Notification Wrapper Component
-function NotificationWrapper() {
-  const { notification, showNotification } = useCart();
+// function NotificationWrapper() {
+//   const { notification, showNotification } = useCart();
 
-  return (
-    <Notification 
-      message={notification || ""} 
-      show={!!notification} 
-      onClose={() => showNotification("")} 
-    />
-  );
-}
+//   return (
+//     <Notification 
+//       message={notification || ""} 
+//       show={!!notification} 
+//       onClose={() => showNotification("")} 
+//     />
+//   );
+// }
