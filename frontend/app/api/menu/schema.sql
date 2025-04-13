@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS menu_items (
+  id UUID PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  price DECIMAL(10,2) NOT NULL,
+  description TEXT,
+  category VARCHAR(50) NOT NULL,
+  image_url TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+); 
