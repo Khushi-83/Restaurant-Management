@@ -1,42 +1,68 @@
-// contexts/CartContext.tsx
 'use client';
-import { createContext, useContext, useState } from 'react';
-import type { CartItem } from '@/types/types';
+
+import { createContext, useContext, useState, ReactNode } from 'react';
+
+export type CartItem = {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  image_url?: string;
+};
 
 type CartContextType = {
   cart: CartItem[];
+  totalItems: number;
+  totalPrice: number;
+  notification?: string;
   addToCart: (item: Omit<CartItem, 'quantity'>) => void;
   removeFromCart: (id: string) => void;
   clearCart: () => void;
-  totalItems: number;
-  totalPrice: number;
   updateQuantity: (id: string, quantity: number) => void;
+  showNotification: (message: string) => void;
 };
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-export function CartProvider({ children }: { children: React.ReactNode }) {
+export function CartProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [notification, setNotification] = useState<string>();
 
   const addToCart = (item: Omit<CartItem, 'quantity'>) => {
     setCart(prev => {
       const existing = prev.find(i => i.id === item.id);
-      return existing
+      const newCart = existing
         ? prev.map(i => 
             i.id === item.id 
               ? { ...i, quantity: i.quantity + 1 } 
               : i
           )
         : [...prev, { ...item, quantity: 1 }];
+      
+      showNotification(existing 
+        ? `${item.name} quantity updated` 
+        : `${item.name} added to cart`);
+      
+      return newCart;
     });
   };
 
   const removeFromCart = (id: string) => {
-    setCart(prev => prev.filter(item => item.id !== id));
+    setCart(prev => {
+      const item = prev.find(i => i.id === id);
+      if (item) {
+        showNotification(`${item.name} removed from cart`);
+      }
+      return prev.filter(item => item.id !== id);
+    });
   };
 
   const updateQuantity = (id: string, quantity: number) => {
-    if (quantity < 1) return;
+    if (quantity < 1) {
+      removeFromCart(id);
+      return;
+    }
+    
     setCart(prev => 
       prev.map(item => 
         item.id === id 
@@ -46,7 +72,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
-  const clearCart = () => setCart([]);
+  const clearCart = () => {
+    setCart([]);
+    showNotification('Cart cleared');
+  };
+
+  const showNotification = (message: string) => {
+    setNotification(message);
+    setTimeout(() => setNotification(undefined), 3000);
+  };
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -54,13 +88,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   return (
     <CartContext.Provider 
       value={{ 
-        cart, 
-        addToCart, 
-        removeFromCart, 
-        clearCart, 
-        totalItems, 
+        cart,
+        totalItems,
         totalPrice,
-        updateQuantity
+        notification,
+        addToCart,
+        removeFromCart,
+        clearCart,
+        updateQuantity,
+        showNotification
       }}
     >
       {children}

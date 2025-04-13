@@ -15,17 +15,28 @@ import {
   Minus, 
   ArrowRight, 
   ChefHat,
-  Clock
+  Clock,
+  X
 } from 'lucide-react';
 import { useState } from 'react';
 
 export default function CartPage() {
-  const { cart, removeFromCart, clearCart, totalItems, totalPrice, updateQuantity } = useCart();
+  const { 
+    cart, 
+    removeFromCart, 
+    clearCart, 
+    totalItems, 
+    totalPrice, 
+    updateQuantity,
+    notification,
+    showNotification
+  } = useCart();
+  
   const [isClearing, setIsClearing] = useState(false);
 
   const handleClearCart = async () => {
     setIsClearing(true);
-    await new Promise(resolve => setTimeout(resolve, 500)); // Animation delay
+    await new Promise(resolve => setTimeout(resolve, 500));
     clearCart();
     setIsClearing(false);
   };
@@ -34,6 +45,27 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12 px-4 sm:px-6">
+      {/* Notification Toast */}
+      <AnimatePresence>
+        {notification && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50"
+          >
+            <div className="bg-green-500 text-white px-4 py-2 rounded-md shadow-lg flex items-center gap-2">
+              <span>{notification}</span>
+              <button
+                aria-label="Close notification"
+                onClick={() => showNotification('')}>
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Hero Section */}
       <div className="text-center mb-10">
         <div className="inline-flex items-center justify-center bg-red-100 px-4 py-2 rounded-full mb-4">
@@ -132,7 +164,7 @@ export default function CartPage() {
                                   variant="ghost"
                                   size="icon"
                                   className="h-8 w-8"
-                                  onClick={() => updateQuantity(item.id, (item.quantity || 1) - 1)}
+                                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
                                   disabled={item.quantity === 1}
                                 >
                                   <Minus className="h-4 w-4" />
@@ -144,13 +176,13 @@ export default function CartPage() {
                                   variant="ghost"
                                   size="icon"
                                   className="h-8 w-8"
-                                  onClick={() => updateQuantity(item.id, (item.quantity || 1) + 1)}
+                                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
                                 >
                                   <Plus className="h-4 w-4" />
                                 </Button>
                               </div>
                               <p className="font-medium">
-                                ₹{item.price * (item.quantity ?? 1)}
+                                ₹{item.price * item.quantity}
                               </p>
                             </div>
                           </div>
