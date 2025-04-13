@@ -7,8 +7,7 @@ import Link from "next/link";
 import { Menu, X, ShoppingCart } from "lucide-react";
 import { CartProvider, useCart } from '@/contexts/cartContext';
 import Notification from "@/components/Notifications";
-import 'antd/dist/reset.css'; // Add this import
-
+import 'antd/dist/reset.css';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -144,14 +143,14 @@ function MobileNavigation({ closeMenu }: { closeMenu: () => void }) {
 }
 
 // Notification Wrapper Component
-// function NotificationWrapper() {
-//   const { notification, showNotification } = useCart();
+function NotificationWrapper() {
+  const { notification, showNotification } = useCart();
 
-//   return (
-//     <Notification 
-//       message={notification || ""} 
-//       show={!!notification} 
-//       onClose={() => showNotification("")} 
-//     />
-//   );
-// }
+  return (
+    <Notification 
+      message={notification || ""} 
+      show={!!notification} 
+      onClose={() => showNotification("")} 
+    />
+  );
+}
