@@ -19,7 +19,7 @@ const MainCourse = () => {
     fetch("http://localhost:5000/api/food-items")
       .then((res) => res.json())
       .then((data: FoodItem[]) => {
-        const filteredItems = data.filter((item) => item.category === "MainCourse");
+        const filteredItems = data.filter((item) => item.category === "Main Course");
         setMainCourse(filteredItems);
       })
       .catch((err) => console.error("Error fetching food items:", err));
@@ -27,12 +27,12 @@ const MainCourse = () => {
 
   return (
     <div className="p-6">
-      <h1 className="text-3xl font-bold text-center mb-6">MainCourse</h1>
+      <h1 className="text-3xl font-bold text-center mb-6">Main Course</h1>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {MainCourse.length > 0 ? (
           MainCourse.map((item) => <FoodCard key={item.id} item={item} />)
         ) : (
-          <p>No MainCourse available.</p>
+          <p>No Main Course available.</p>
         )}
       </div>
     </div>
