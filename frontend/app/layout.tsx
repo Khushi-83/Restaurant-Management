@@ -22,33 +22,34 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <body className="min-h-screen flex flex-col bg-gray-100">
           {/* Navbar */}
           <header className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-sm shadow-sm">
-            <div className="w-full px-6 py-2 flex items-center">
-              {/* Made Restaurant text clickable with Link component */}
-              <Link href="/" className="text-xl font-semibold text-gray-800 hover:text-gray-600 transition-colors">
+            <div className="w-full max-w-7xl mx-auto px-6 py-2 flex items-center justify-between">
+              {/* Left: Logo */}
+              <Link href="/" className="text-xl font-semibold text-red-900 hover:text-red-700 transition-colors">
                 Restaurant
               </Link>
-              
-              {/* Desktop Navigation */}
-              <nav className="ml-auto hidden md:flex items-center space-x-6">
-                <DesktopNavigation />
-              </nav>
 
-              {/* Mobile Menu Button */}
-              <button 
-                className="md:hidden ml-auto" 
-                onClick={() => setIsOpen(!isOpen)}
-                aria-label="Toggle menu"
-              >
-                {isOpen ? <X size={24} /> : <Menu size={24} />}
-              </button>
+              {/* Center: Nav Items */}
+              <div className="hidden md:flex items-center justify-center flex-1">
+                <DesktopNavigation />
+              </div>
+
+              {/* Right: Mobile Menu Button */}
+              <div className="md:hidden flex items-center">
+                <button 
+                  onClick={() => setIsOpen(!isOpen)}
+                  aria-label="Toggle menu"
+                >
+                  {isOpen ? <X size={24} /> : <Menu size={24} />}
+                </button>
+              </div>
             </div>
-            
+
             {/* Mobile Dropdown Menu */}
             {isOpen && <MobileNavigation closeMenu={() => setIsOpen(false)} />}
           </header>
 
           {/* Main Content */}
-          <main className="flex-grow pt-[48px]">{children}</main>
+          <main className="flex-grow pt-[60px]">{children}</main>
 
           {/* Notification System */}
           <NotificationWrapper />

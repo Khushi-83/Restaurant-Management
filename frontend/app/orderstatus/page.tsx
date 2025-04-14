@@ -92,9 +92,9 @@ export default function OrderStatusPage() {
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12 px-4 sm:px-6">
       {/* Hero Section */}
       <div className="text-center mb-10">
-        <div className="inline-flex items-center justify-center bg-red-100 px-4 py-2 rounded-full mb-4">
-          <span className="text-red-800 text-sm font-medium">Track Your Order</span>
-        </div>
+      <Badge className="bg-red-200 text-red-800 text-sm font-medium px-3 py-1 rounded-full mb-4">
+          Track your Order
+        </Badge>
         <h1 className="text-3xl sm:text-4xl font-serif font-semibold text-gray-900 mb-2">
           Order Status
         </h1>

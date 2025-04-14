@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Send, Loader2 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { format } from "date-fns"
+import { Badge } from "@/components/ui/badge"
 
 type Message = {
   id: string;
@@ -80,9 +81,9 @@ export default function ChatPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center bg-red-100 px-4 py-2 rounded-full mb-4">
-          <span className="text-red-800 text-sm font-medium">Live Support</span>
-        </div>
+      <Badge className="bg-red-200 text-red-800 text-sm font-medium px-3 py-1 rounded-full mb-4">
+          Live Support
+        </Badge>
         <h1 className="text-3xl sm:text-4xl font-serif font-semibold text-gray-900 mb-2">
           Chat with Us
         </h1>

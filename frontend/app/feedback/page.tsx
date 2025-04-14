@@ -11,6 +11,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { ChevronRight } from "lucide-react";
 import { socket } from "@/lib/socket";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 
 export default function FeedbackForm() {
   const [date, setDate] = useState<Date | undefined>(new Date());
@@ -119,9 +120,9 @@ export default function FeedbackForm() {
 
       {/* Hero Section */}
       <div className="text-center mb-10">
-        <div className="inline-flex items-center justify-center bg-red-100 px-4 py-2 rounded-full mb-4 text-red-800 text-sm font-medium">
-          Share Your Experience
-        </div>
+       <Badge className="bg-red-200 text-red-800 text-sm font-medium px-3 py-1 rounded-full mb-4">
+            Share Your Experience
+        </Badge>
         <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif font-semibold text-gray-900 mb-4">
           We Value Your Feedback
         </h1>

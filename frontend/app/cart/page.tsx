@@ -8,7 +8,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { 
+import { Badge } from "@/components/ui/badge";
+import {
   ShoppingCart, 
   Trash2, 
   Plus, 
@@ -68,9 +69,9 @@ export default function CartPage() {
 
       {/* Hero Section */}
       <div className="text-center mb-10">
-        <div className="inline-flex items-center justify-center bg-red-100 px-4 py-2 rounded-full mb-4">
-          <span className="text-red-800 text-sm font-medium">Your Shopping Cart</span>
-        </div>
+      <Badge className="bg-red-200 text-red-800 text-sm font-medium px-3 py-1 rounded-full mb-4">
+          Your Shopping Cart
+        </Badge>
         <h1 className="text-3xl sm:text-4xl font-serif font-semibold text-gray-900 mb-2">
           {totalItems === 0 ? "Your Cart is Empty" : `Your Cart (${totalItems})`}
         </h1>
