@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useCart } from "@/contexts/cartContext";
 
 type FoodItem = {
-  id: number;
+  id: string;
   name: string;
   price: number;
   quantity: number;

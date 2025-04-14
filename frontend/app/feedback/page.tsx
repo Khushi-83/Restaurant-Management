@@ -112,7 +112,7 @@ export default function FeedbackForm() {
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12 px-4 sm:px-6">
       {/* Connection Status */}
       <div className={`fixed top-4 right-4 px-4 py-2 rounded-full text-sm font-medium ${
-        isConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+        isConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-1000'
       }`}>
         {isConnected ? 'Connected' : connectionError || 'Disconnected'}
       </div>
