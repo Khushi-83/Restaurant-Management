@@ -5,7 +5,7 @@ const { createClient } = require("@supabase/supabase-js");
 const { Cashfree } = require("cashfree-pg");
 const http = require("http");
 const { Server } = require("socket.io");
-const paymentRoutes = require('./paymentRoutes');
+const paymentRoutes = require('./PaymentRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -15,7 +15,7 @@ const io = new Server(server, {
   cors: {
     origin: process.env.NODE_ENV === "production" 
       ? process.env.FRONTEND_URL.split(',')
-      : ["http://localhost:3000"],
+      : ["http://localhost:3000", "http://localhost:3000/admin"],
     methods: ["GET", "POST"],
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization']
