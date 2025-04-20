@@ -74,7 +74,10 @@ export async function DELETE(request: Request) {
       );
     }
 
-    
+    const { error } = await supabase
+      .from('food_items') // Changed from menu_items
+      .delete()
+      .eq('id', id);
 
     if (error) throw error;
 
