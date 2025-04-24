@@ -1,0 +1,4 @@
+{"ip":"::1","level":"info","message":"Incoming request","method":"GET","path":"/api/food-items","timestamp":"2025-04-24T11:01:40.672Z"}
+{"ip":"::1","level":"info","message":"Incoming request","method":"GET","path":"/api/food-items","timestamp":"2025-04-24T11:01:41.566Z"}
+{"ip":"::1","level":"info","message":"Incoming request","method":"POST","path":"/api/orders","timestamp":"2025-04-24T11:02:32.226Z"}
+{"ip":"::1","level":"info","message":"Incoming request","method":"POST","path":"/api/payments/initiate","timestamp":"2025-04-24T11:02:32.415Z"}

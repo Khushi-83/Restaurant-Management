@@ -6,6 +6,8 @@ const { Cashfree } = require("cashfree-pg");
 const http = require("http");
 const { Server } = require("socket.io");
 const paymentRoutes = require('./PaymentRoutes');
+const helmet = require('helmet');
+const logger = require('./utils/logger');
 
 const app = express();
 const server = http.createServer(app);
@@ -27,6 +29,9 @@ const io = new Server(server, {
 
 const port = process.env.PORT || 5000;
 
+// Security middleware
+app.use(helmet());
+
 // Enhanced Security Middleware
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -38,15 +43,21 @@ app.use((req, res, next) => {
 
 // Enhanced CORS configuration
 app.use(cors({
-  origin: process.env.NODE_ENV === "production" 
-    ? process.env.FRONTEND_URL.split(',')
-    : ["http://localhost:3000", "http://localhost:3001"],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
-  maxAge: 86400
+  origin: process.env.FRONTEND_URL,
+  methods: ['GET', 'POST'],
+  credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
+
+// Request logging middleware
+app.use((req, res, next) => {
+  logger.info('Incoming request', {
+    method: req.method,
+    path: req.path,
+    ip: req.ip
+  });
+  next();
+});
 
 app.use('/api/payments', paymentRoutes);
 
@@ -502,12 +513,16 @@ io.on("connection", (socket) => {
   });
 });
 
-// Error Handling Middleware
+// Global error handler
 app.use((err, req, res, next) => {
-  console.error("Server error:", err);
-  res.status(500).json({ 
-    error: "Internal server error",
-    details: process.env.NODE_ENV === "development" ? err.message : undefined
+  logger.error('Unhandled error', {
+    error: err.message,
+    stack: err.stack
+  });
+
+  res.status(500).json({
+    status: 'error',
+    message: 'An unexpected error occurred'
   });
 });
 

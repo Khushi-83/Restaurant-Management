@@ -1,48 +1,96 @@
-// paymentRoutes.js
 const express = require('express');
 const router = express.Router();
-const paymentService = require('./PaymentService');
+const PaymentService = require('./PaymentService');
+const { PaymentError } = require('./utils/ErrorHandler');
+const logger = require('./utils/logger');
 
-/**
- * @route POST /payments/initiate
- * @desc Create payment session
- */
-router.post('/initiate', async (req, res) => {
+// Middleware to handle errors
+const errorHandler = (err, req, res, next) => {
+  logger.error('Payment error occurred', {
+    error: err.message,
+    code: err.code,
+    details: err.details
+  });
+
+  if (err instanceof PaymentError) {
+    return res.status(400).json({
+      status: 'error',
+      code: err.code,
+      message: err.message,
+      details: err.details
+    });
+  }
+
+  res.status(500).json({
+    status: 'error',
+    code: 'INTERNAL_SERVER_ERROR',
+    message: 'An unexpected error occurred'
+  });
+};
+
+// Create payment session
+router.post('/create-session', async (req, res) => {
   try {
-    const { orderId, amount, tableNo, customerName } = req.body;
-    const result = await paymentService.createPaymentSession({
-      orderId,
+    const { amount, orderId, customerDetails } = req.body;
+
+    // Validate input
+    if (!amount || !orderId || !customerDetails) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Missing required fields'
+      });
+    }
+
+    const session = await PaymentService.createPaymentSession({
       amount,
-      tableNo,
-      customerName
+      orderId,
+      customerDetails
     });
-    res.json(result);
+
+    res.json({
+      status: 'success',
+      data: session
+    });
   } catch (error) {
-    res.status(500).json({ 
-      error: "Payment initiation failed",
-      details: error.message 
+    console.error('Payment session creation failed:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message || 'Failed to create payment session'
     });
   }
 });
 
-/**
- * @route POST /payments/webhook
- * @desc Handle payment webhook
- */
-router.post('/webhook', async (req, res) => {
+// Verify payment status
+router.get('/verify/:orderId', async (req, res, next) => {
   try {
-    const paymentData = await paymentService.handleWebhook(req.body);
+    const { orderId } = req.params;
+    const paymentStatus = await PaymentService.verifyPayment(orderId);
     
-    // Here you would typically:
-    // 1. Update order status in database
-    // 2. Notify kitchen/admin
-    // 3. Trigger any post-payment actions
-    
-    res.json({ success: true, data: paymentData });
+    res.json({
+      status: 'success',
+      data: paymentStatus
+    });
   } catch (error) {
-    console.error('Webhook error:', error);
-    res.status(400).json({ error: error.message });
+    next(error);
   }
 });
+
+// Webhook handler
+router.post('/webhook', async (req, res, next) => {
+  try {
+    const signature = req.headers['x-cashfree-signature'];
+    const paymentData = await PaymentService.handleWebhook(req.body, signature);
+    
+    res.json({
+      status: 'success',
+      data: paymentData
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Apply error handler
+router.use(errorHandler);
 
 module.exports = router;

@@ -8,17 +8,19 @@ import { Clock } from 'lucide-react';
 
 export default function Page() {
   const { cart, totalPrice } = useCart();
+
   const [tableNo, setTableNo] = useState('');
   const [customerName, setCustomerName] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6">
       <div className="max-w-2xl mx-auto">
-        {/* Header Section with light red badge */}
         <div className="text-center mb-12">
-        <Badge className="bg-red-200 text-red-800 text-sm font-medium px-3 py-1 rounded-full mb-4">
-          Processing Your Order
-        </Badge>
+          <Badge className="bg-red-200 text-red-800 text-sm font-medium px-3 py-1 rounded-full mb-4">
+            Processing Your Order
+          </Badge>
           <h1 className="text-3xl sm:text-4xl font-serif font-semibold text-gray-900 mb-4">
             Finalize Your Dining Experience
           </h1>
@@ -27,16 +29,15 @@ export default function Page() {
           </p>
         </div>
 
-        {/* Rest of the component remains the same */}
         <div className="space-y-8">
-          {/* Customer Details Card */}
+          {/* Customer Details */}
           <Card className="border-0 shadow-sm">
             <CardContent className="p-6 space-y-6">
               <h2 className="text-xl font-semibold flex items-center gap-2">
                 <Clock className="h-5 w-5 text-red-600" />
                 Order Details
               </h2>
-              
+
               <div className="space-y-4">
                 <div>
                   <label className="block mb-2 text-sm font-medium text-gray-700">
@@ -46,7 +47,7 @@ export default function Page() {
                     type="text"
                     value={tableNo}
                     onChange={(e) => setTableNo(e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
                     placeholder="e.g., A12"
                     required
                   />
@@ -54,32 +55,58 @@ export default function Page() {
 
                 <div>
                   <label className="block mb-2 text-sm font-medium text-gray-700">
-                    Your Name (Optional)
+                    Your Name
                   </label>
                   <input
                     type="text"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
                     placeholder="For order reference"
                   />
                 </div>
+
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    Phone Number 
+                  </label>
+                  <input
+                    type="tel"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+                    placeholder="e.g. 9876543210"
+                  />
+                </div>
+
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    Email (Optional)
+                  </label>
+                  <input
+                    type="email"
+                    value={customerEmail}
+                    onChange={(e) => setCustomerEmail(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+                    placeholder="e.g. john@example.com"
+                  />
+                </div>
+
+                
               </div>
             </CardContent>
           </Card>
 
-          {/* Order Summary Card */}
+          {/* Order Summary */}
           <Card className="border-0 shadow-sm">
             <CardContent className="p-6">
               <h2 className="text-xl font-semibold mb-6">Order Summary</h2>
-              
+
               <div className="divide-y">
                 {cart.map(item => (
                   <div key={item.id} className="py-4 flex justify-between items-center">
                     <div>
-                      <p className="font-medium">
-                        {item.name} × {item.quantity}
-                      </p>
+                      <p className="font-medium">{item.name} × {item.quantity}</p>
                     </div>
                     <span className="font-medium">₹{item.price * item.quantity}</span>
                   </div>
@@ -109,14 +136,17 @@ export default function Page() {
           </Card>
 
           {/* Checkout Button */}
-          <div className="pt-4">
-            <CheckoutButton
-              tableNo={tableNo}
-              customerName={customerName}
-              cartTotal={totalPrice}
-              cartItems={cart}
-            />
-          </div>
+<div className="pt-4">
+  <CheckoutButton
+    cartItems={cart}
+    amount={totalPrice}
+    customerDetails={{
+      name: customerName,
+      email: customerEmail,
+      phone: customerPhone,
+    }}
+  />
+</div>
 
           {/* Assurance Message */}
           <div className="text-center text-sm text-gray-500 mt-8">

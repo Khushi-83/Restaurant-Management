@@ -1,7 +1,5 @@
-// src/types/types.ts
-
 export type CartItem = {
-  id: string; // Changed from number to string to match your DB
+  id: string;
   name: string;
   quantity: number;
   price: number;
@@ -11,7 +9,6 @@ export type CartItem = {
 
 export type PaymentStatus = 'idle' | 'processing' | 'success' | 'failed';
 
-// ✅ Corrected Cashfree window extension (no `new Cashfree()`)
 declare global {
   interface Window {
     Cashfree: {
@@ -24,6 +21,8 @@ declare global {
             channel?: 'link' | 'redirection';
             savedCards?: boolean;
           };
+          netbanking?: Record<string, never>;
+          wallet?: Record<string, never>;
         };
       }) => void;
     };
@@ -37,3 +36,4 @@ export type Order = {
   total_price: number;
   status: 'pending' | 'paid' | 'failed';
 };
+

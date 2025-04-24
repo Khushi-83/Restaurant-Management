@@ -1,110 +1,91 @@
-// components/CheckoutButton.tsx
 'use client';
+
 import { useState } from 'react';
+import { Button } from "@/components/ui/button";
 import Script from 'next/script';
-import type { CartItem, PaymentStatus } from '@/types/types';
+import { CartItem } from '@/types/types';
 
-type CheckoutButtonProps = {
-  tableNo: string;
-  customerName: string;
-  cartTotal: number;
+interface CheckoutButtonProps {
   cartItems: CartItem[];
-};
+  amount: number;
+  customerDetails: {
+    name: string;
+    email: string;
+    phone: string;
+  };
+}
 
-export default function CheckoutButton({
-  tableNo,
-  customerName,
-  cartTotal,
-  cartItems
-}: CheckoutButtonProps) {
-  const [loading, setLoading] = useState(false);
-  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('idle');
+export default function CheckoutButton({ cartItems, amount, customerDetails }: CheckoutButtonProps) {
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleCheckout = async () => {
-    setLoading(true);
-    setPaymentStatus('processing');
-
+  const initializePayment = async () => {
     try {
-      // 1. Create order
-      const orderRes = await fetch('http://localhost:5000/api/orders', {
+      setIsLoading(true);
+
+      // Validate customer details
+      if (!customerDetails.name || !customerDetails.email || !customerDetails.phone) {
+        alert('Please provide complete customer details.');
+        setIsLoading(false);
+        return;
+      }
+
+      const orderResponse = await fetch('/api/payments/initiate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
-          table_number: tableNo,
-          customer_name: customerName,
-          items: cartItems,
-          total_price: cartTotal,
-          payment_method: 'online'
-        })
+          amount,
+          customerDetails: {
+            customerName: customerDetails.name,
+            customerEmail: customerDetails.email,
+            customerPhone: customerDetails.phone,
+          },
+          cartItems,
+        }),
       });
 
-      const { order_id } = await orderRes.json();
+      if (!orderResponse.ok) {
+        throw new Error('Failed to create payment order');
+      }
 
-      // 2. Initialize payment
-      const paymentRes = await fetch('http://localhost:5000/api/payments/initiate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderId: order_id,
-          amount: cartTotal,
-          tableNo,
-          customerName
-        })
-      });
+      const { paymentSessionId } = await orderResponse.json();
 
-      const { paymentSessionId } = await paymentRes.json();
-
-      // 3. Open Cashfree
-      if (typeof window !== 'undefined' && window.Cashfree && typeof window.Cashfree.initialize === 'function') {
+      if (typeof window !== 'undefined' && window.Cashfree) {
         window.Cashfree.initialize({
           paymentSessionId,
-          returnUrl: `${window.location.origin}/payment-status?table=${tableNo}`,
+          returnUrl: `${window.location.origin}/payment/status`,
           paymentModes: {
             upi: { flow: 'intent' },
             card: { channel: 'link' },
-          },
+            netbanking: {},
+            wallet: {}
+          }
         });
       } else {
-        console.error("Cashfree SDK not loaded or initialize method missing");
-        setPaymentStatus('failed');
+        throw new Error('Cashfree SDK not loaded');
       }
-      
-
-
     } catch (error) {
-      console.error("Checkout failed:", error);
-      setPaymentStatus('failed');
+      console.error('Payment initialization error:', error);
+      alert('Payment initialization failed. Please try again.');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
     <>
-      <Script 
-  src="https://sdk.cashfree.com/js/ui/2.0.0/cashfree.prod.js" 
-  strategy="afterInteractive"
-  onLoad={() => {
-    console.log("✅ Cashfree SDK loaded");
-  }}
-/>
-
-
-      <button
-        onClick={handleCheckout}
-        disabled={loading}
-        className={`w-full py-3 px-6 rounded-lg text-white font-medium ${
-          loading ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'
-        }`}
+      <Script
+        src="https://sdk.cashfree.com/js/v3/cashfree.js"
+        strategy="lazyOnload"
+      />
+      <Button
+        onClick={initializePayment}
+        disabled={isLoading}
+        className="w-full bg-red-600 hover:bg-red-700 text-white"
       >
-        {loading ? 'Processing...' : `Pay ₹${cartTotal}`}
-      </button>
-
-      {paymentStatus === 'failed' && (
-        <p className="mt-2 text-red-500 text-sm">
-          Payment failed. Please try again.
-        </p>
-      )}
+        {isLoading ? 'Processing...' : 'Pay Now'}
+      </Button>
     </>
   );
 }
