@@ -55,7 +55,7 @@ export default function Page() {
 
                 <div>
                   <label className="block mb-2 text-sm font-medium text-gray-700">
-                    Your Name
+                    Your Name (Optional)
                   </label>
                   <input
                     type="text"
@@ -63,19 +63,6 @@ export default function Page() {
                     onChange={(e) => setCustomerName(e.target.value)}
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
                     placeholder="For order reference"
-                  />
-                </div>
-
-                <div>
-                  <label className="block mb-2 text-sm font-medium text-gray-700">
-                    Phone Number 
-                  </label>
-                  <input
-                    type="tel"
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
-                    placeholder="e.g. 9876543210"
                   />
                 </div>
 
@@ -92,7 +79,18 @@ export default function Page() {
                   />
                 </div>
 
-                
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    Phone Number (Optional)
+                  </label>
+                  <input
+                    type="tel"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+                    placeholder="e.g. 9876543210"
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -136,17 +134,18 @@ export default function Page() {
           </Card>
 
           {/* Checkout Button */}
-<div className="pt-4">
-  <CheckoutButton
-    cartItems={cart}
-    amount={totalPrice}
-    customerDetails={{
-      name: customerName,
-      email: customerEmail,
-      phone: customerPhone,
-    }}
-  />
-</div>
+          <div className="pt-4">
+            <CheckoutButton
+              tableNo={tableNo}
+              cartItems={cart}
+              amount={totalPrice}
+              customerDetails={{
+                name: customerName,
+                email: customerEmail,
+                phone: customerPhone,
+              }}
+            />
+          </div>
 
           {/* Assurance Message */}
           <div className="text-center text-sm text-gray-500 mt-8">
