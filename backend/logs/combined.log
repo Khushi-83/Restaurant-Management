@@ -2,3 +2,10 @@
 {"ip":"::1","level":"info","message":"Incoming request","method":"GET","path":"/api/food-items","timestamp":"2025-04-24T11:01:41.566Z"}
 {"ip":"::1","level":"info","message":"Incoming request","method":"POST","path":"/api/orders","timestamp":"2025-04-24T11:02:32.226Z"}
 {"ip":"::1","level":"info","message":"Incoming request","method":"POST","path":"/api/payments/initiate","timestamp":"2025-04-24T11:02:32.415Z"}
+{"ip":"::1","level":"info","message":"Incoming request","method":"GET","path":"/api/food-items","timestamp":"2025-04-24T16:56:14.259Z"}
+{"ip":"::1","level":"info","message":"Incoming request","method":"GET","path":"/api/food-items","timestamp":"2025-04-24T16:56:14.437Z"}
+{"ip":"::1","level":"info","message":"Incoming request","method":"GET","path":"/api/food-items","timestamp":"2025-04-24T17:20:48.401Z"}
+{"ip":"::1","level":"info","message":"Incoming request","method":"GET","path":"/api/food-items","timestamp":"2025-04-24T17:48:56.902Z"}
+{"ip":"::1","level":"info","message":"Incoming request","method":"GET","path":"/api/food-items","timestamp":"2025-04-24T17:48:56.981Z"}
+{"ip":"::1","level":"info","message":"Incoming request","method":"POST","path":"/api/payment/create-session","timestamp":"2025-04-24T17:49:29.751Z"}
+{"ip":"::1","level":"info","message":"Incoming request","method":"GET","path":"/api/food-items","timestamp":"2025-04-24T18:01:37.259Z"}

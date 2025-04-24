@@ -75,10 +75,7 @@ export default function CheckoutButton({ cartItems, amount, customerDetails }: C
 
   return (
     <>
-      <Script
-        src="https://sdk.cashfree.com/js/v3/cashfree.js"
-        strategy="lazyOnload"
-      />
+      
       <Button
         onClick={initializePayment}
         disabled={isLoading}
