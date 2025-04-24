@@ -194,8 +194,25 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="border-t border-gray-800 mt-12 pt-8 text-center text-gray-400">
-          <p>© {new Date().getFullYear()} Restaurant. All Rights Reserved</p>
+        <div className="border-t border-gray-800 mt-12 pt-8">
+          <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+            <p className="text-gray-400">© {new Date().getFullYear()} Restaurant. All Rights Reserved</p>
+            <div className="flex gap-4 text-gray-400">
+              <Link 
+                href="/terms&conditions" 
+                className="hover:text-white transition-duration-300"
+              >
+                Terms & Conditions
+              </Link>
+              <span>•</span>
+              <Link 
+                href="/privacy" 
+                className="hover:text-white transition-duration-300"
+              >
+                Privacy Policy
+              </Link>
+            </div>
+          </div>
         </div>
       </footer>
     </div>
