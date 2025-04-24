@@ -55,7 +55,7 @@ export default function Page() {
 
                 <div>
                   <label className="block mb-2 text-sm font-medium text-gray-700">
-                    Your Name (Optional)
+                    Your Name 
                   </label>
                   <input
                     type="text"
