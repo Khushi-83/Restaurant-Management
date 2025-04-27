@@ -57,7 +57,7 @@ app.use((req, res, next) => {
     method: req.method,
     path: req.path,
     ip: req.ip
-  });
+  });``
   next();
 });
 
@@ -259,7 +259,7 @@ app.get("/api/orders", async (req, res) => {
 });
 
 // Payment Routes
-app.post("/api/payments/initiate", async (req, res) => {
+app.post("/api/payments/create-session", async (req, res) => {
   try {
     const { orderId, amount, tableNo, customerName } = req.body;
 
@@ -526,6 +526,42 @@ app.use((err, req, res, next) => {
     status: 'error',
     message: 'An unexpected error occurred'
   });
+});
+
+// Add new route to match frontend expectations
+app.post('/api/payments/initiate', async (req, res) => {
+  try {
+    const { amount, customerDetails, cartItems } = req.body;
+    const { customerName, customerEmail, customerPhone } = customerDetails;
+
+    // Extract table number from cartItems or another source
+    const tableNo = cartItems[0]?.tableNo || 'defaultTableNo'; // Adjust as needed
+
+    const order = {
+      order_id: `RESTRO-${Date.now()}-${tableNo}`,
+      order_amount: amount,
+      order_currency: "INR",
+      order_note: `Table ${tableNo} - ${customerName || "Guest"}`,
+      customer_details: {
+        customer_id: `table-${tableNo}`,
+        customer_name: customerName || `Table ${tableNo} Customer`,
+        customer_email: customerEmail,
+        customer_phone: customerPhone
+      }
+    };
+
+    const { payment_session_id } = await cashfree.pgOrderCreate(order);
+    res.json({ 
+      paymentSessionId: payment_session_id,
+      orderId: order.order_id
+    });
+  } catch (err) {
+    console.error("Payment initiation error:", err);
+    res.status(500).json({ 
+      error: "Payment initiation failed",
+      details: process.env.NODE_ENV === "development" ? err.message : undefined
+    });
+  }
 });
 
 server.listen(port, () => {

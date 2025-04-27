@@ -4,6 +4,7 @@
     "@cashfreepayments/cashfree-js": "^1.0.5",
     "@supabase/supabase-js": "^2.48.1",
     "antd": "^5.24.6",
+    "cashfree-pg": "^5.0.8",
     "cors": "^2.8.5",
     "socket.io-client": "^4.8.1",
     "tailwindcss": "^4.0.6"

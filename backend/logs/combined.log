@@ -31,3 +31,11 @@
 {"ip":"::1","level":"info","message":"Incoming request","method":"GET","path":"/api/food-items","timestamp":"2025-04-27T01:12:55.925Z"}
 {"ip":"::1","level":"info","message":"Incoming request","method":"GET","path":"/api/food-items","timestamp":"2025-04-27T01:12:56.128Z"}
 {"ip":"::1","level":"info","message":"Incoming request","method":"GET","path":"/api/food-items","timestamp":"2025-04-27T01:22:03.860Z"}
+{"ip":"::1","level":"info","message":"Incoming request","method":"POST","path":"/api/payment/create-session","timestamp":"2025-04-27T01:39:11.384Z"}
+{"ip":"::1","level":"info","message":"Incoming request","method":"POST","path":"/api/payment/create-session","timestamp":"2025-04-27T02:07:16.287Z"}
+{"ip":"::1","level":"info","message":"Incoming request","method":"GET","path":"/api/food-items","timestamp":"2025-04-27T03:51:24.404Z"}
+{"ip":"::1","level":"info","message":"Incoming request","method":"GET","path":"/api/food-items","timestamp":"2025-04-27T03:51:24.718Z"}
+{"ip":"::1","level":"info","message":"Incoming request","method":"POST","path":"/api/payment/create-session","timestamp":"2025-04-27T03:52:08.743Z"}
+{"ip":"::1","level":"info","message":"Incoming request","method":"GET","path":"/api/food-items","timestamp":"2025-04-27T03:53:20.746Z"}
+{"ip":"::1","level":"info","message":"Incoming request","method":"GET","path":"/api/food-items","timestamp":"2025-04-27T03:53:20.766Z"}
+{"ip":"::1","level":"info","message":"Incoming request","method":"POST","path":"/api/payment/create-session","timestamp":"2025-04-27T03:53:43.589Z"}
