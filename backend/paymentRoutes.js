@@ -29,7 +29,7 @@ const errorHandler = (err, req, res, next) => {
 };
 
 // Create payment session
-router.post('/create-session', async (req, res) => {
+router.post('/initiate', async (req, res) => {
   try {
     const { amount, orderId, customerDetails } = req.body;
 

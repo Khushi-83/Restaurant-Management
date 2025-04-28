@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     // Generate a unique order ID
     const orderId = `ORDER-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/payment/create-session`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/payments/initiate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

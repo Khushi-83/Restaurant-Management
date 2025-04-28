@@ -5,6 +5,7 @@ export type CartItem = {
   price: number;
   image_url?: string;
   category?: string;
+  tableNo: string;
 };
 
 export type PaymentStatus = 'idle' | 'processing' | 'success' | 'failed';

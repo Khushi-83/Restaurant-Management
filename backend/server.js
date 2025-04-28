@@ -57,7 +57,7 @@ app.use((req, res, next) => {
     method: req.method,
     path: req.path,
     ip: req.ip
-  });``
+  });
   next();
 });
 
@@ -259,7 +259,7 @@ app.get("/api/orders", async (req, res) => {
 });
 
 // Payment Routes
-app.post("/api/payments/create-session", async (req, res) => {
+app.post("/api/payments/initiate", async (req, res) => {
   try {
     const { orderId, amount, tableNo, customerName } = req.body;
 
@@ -530,12 +530,17 @@ app.use((err, req, res, next) => {
 
 // Add new route to match frontend expectations
 app.post('/api/payments/initiate', async (req, res) => {
+  console.log("Request received:", req.body);
   try {
+    console.log("Request body:", req.body);
     const { amount, customerDetails, cartItems } = req.body;
     const { customerName, customerEmail, customerPhone } = customerDetails;
 
-    // Extract table number from cartItems or another source
-    const tableNo = cartItems[0]?.tableNo || 'defaultTableNo'; // Adjust as needed
+    const tableNo = cartItems[0]?.tableNo || 'defaultTableNo';
+    if (!tableNo || tableNo === 'defaultTableNo') {
+      console.log("Invalid table number");
+      return res.status(400).json({ error: "Table number is required" });
+    }
 
     const order = {
       order_id: `RESTRO-${Date.now()}-${tableNo}`,
@@ -549,6 +554,8 @@ app.post('/api/payments/initiate', async (req, res) => {
         customer_phone: customerPhone
       }
     };
+
+    console.log("Order details:", order);
 
     const { payment_session_id } = await cashfree.pgOrderCreate(order);
     res.json({ 

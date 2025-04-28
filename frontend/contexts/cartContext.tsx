@@ -8,6 +8,7 @@ export type CartItem = {
   price: number;
   quantity: number;
   image_url?: string;
+  tableNo: string;
 };
 
 type CartContextType = {
@@ -38,12 +39,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
               : i
           )
         : [...prev, { ...item, quantity: 1 }];
+
+      // Remove duplicate table numbers
+      const uniqueCart = newCart.filter((item, index, self) =>
+        index === self.findIndex((t) => (
+          t.tableNo === item.tableNo
+        ))
+      );
       
       showNotification(existing 
         ? `${item.name} quantity updated` 
         : `${item.name} added to cart`);
       
-      return newCart;
+      return uniqueCart;
     });
   };
 
@@ -51,7 +59,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setCart(prev => {
       const item = prev.find(i => i.id === id);
       if (item) {
-        showNotification(`${item.name} removed from cart`);
+        setNotification(`${item.name} removed from cart`);
       }
       return prev.filter(item => item.id !== id);
     });
@@ -82,23 +90,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setTimeout(() => setNotification(undefined), 3000);
   };
 
-  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-
   return (
-    <CartContext.Provider 
-      value={{ 
-        cart,
-        totalItems,
-        totalPrice,
-        notification,
-        addToCart,
-        removeFromCart,
-        clearCart,
-        updateQuantity,
-        showNotification
-      }}
-    >
+    <CartContext.Provider value={{
+      cart,
+      totalItems: cart.length,
+      totalPrice: cart.reduce((total, item) => total + item.price * item.quantity, 0),
+      notification,
+      addToCart,
+      removeFromCart,
+      clearCart,
+      updateQuantity,
+      showNotification
+    }}>
       {children}
     </CartContext.Provider>
   );
@@ -106,7 +109,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
 export function useCart() {
   const context = useContext(CartContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useCart must be used within a CartProvider');
   }
   return context;

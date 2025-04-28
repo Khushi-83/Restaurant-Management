@@ -12,6 +12,7 @@ interface CheckoutButtonProps {
     name: string;
     email: string;
     phone: string;
+    tableNo: string;
   };
 }
 
@@ -23,13 +24,20 @@ export default function CheckoutButton({ cartItems, amount, customerDetails }: C
       setIsLoading(true);
 
       // Validate customer details
-      if (!customerDetails.name || !customerDetails.email || !customerDetails.phone) {
+      if (!customerDetails.name || !customerDetails.email || !customerDetails.phone || !customerDetails.tableNo) {
         alert('Please provide complete customer details.');
         setIsLoading(false);
         return;
       }
 
-      const orderResponse = await fetch('/api/payments/initiate', {
+      // Remove duplicate table numbers from cart items
+      const uniqueCartItems = cartItems.filter((item, index, self) =>
+        index === self.findIndex((t) => (
+          t.tableNo === item.tableNo
+        ))
+      );
+
+      const orderResponse = await fetch('http://localhost:5000/api/payments/initiate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -40,8 +48,9 @@ export default function CheckoutButton({ cartItems, amount, customerDetails }: C
             customerName: customerDetails.name,
             customerEmail: customerDetails.email,
             customerPhone: customerDetails.phone,
+            tableNo: customerDetails.tableNo
           },
-          cartItems,
+          cartItems: uniqueCartItems,
         }),
       });
 
