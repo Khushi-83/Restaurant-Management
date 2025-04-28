@@ -136,13 +136,13 @@ export default function Page() {
           {/* Checkout Button */}
           <div className="pt-4">
             <CheckoutButton
-              //tableNo={tableNo}
               cartItems={cart}
               amount={totalPrice}
               customerDetails={{
                 name: customerName,
                 email: customerEmail,
                 phone: customerPhone,
+                tableNo: tableNo
               }}
             />
           </div>

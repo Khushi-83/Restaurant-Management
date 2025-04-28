@@ -37,6 +37,12 @@ export default function CheckoutButton({ cartItems, amount, customerDetails }: C
         ))
       );
 
+      console.log('Initializing payment with details:', {
+        amount,
+        customerDetails,
+        cartItems: uniqueCartItems
+      });
+
       const orderResponse = await fetch('http://localhost:5000/api/payments/initiate', {
         method: 'POST',
         headers: {
@@ -53,6 +59,8 @@ export default function CheckoutButton({ cartItems, amount, customerDetails }: C
           cartItems: uniqueCartItems,
         }),
       });
+
+      console.log('Order response status:', orderResponse.status);
 
       if (!orderResponse.ok) {
         throw new Error('Failed to create payment order');

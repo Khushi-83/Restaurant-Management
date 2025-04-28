@@ -260,8 +260,20 @@ app.get("/api/orders", async (req, res) => {
 
 // Payment Routes
 app.post("/api/payments/initiate", async (req, res) => {
+  console.log("Request received:", req.body);
   try {
-    const { orderId, amount, tableNo, customerName } = req.body;
+    const { amount, customerDetails, cartItems } = req.body;
+    const { customerName, customerEmail, customerPhone } = customerDetails;
+
+    console.log("Received amount:", amount);
+    console.log("Received customer details:", customerDetails);
+    console.log("Received cart items:", cartItems);
+
+    const tableNo = cartItems[0]?.tableNo || 'defaultTableNo';
+    if (!tableNo || tableNo === 'defaultTableNo') {
+      console.log("Invalid table number");
+      return res.status(400).json({ error: "Table number is required" });
+    }
 
     const order = {
       order_id: `RESTRO-${Date.now()}-${tableNo}`,
@@ -271,17 +283,20 @@ app.post("/api/payments/initiate", async (req, res) => {
       customer_details: {
         customer_id: `table-${tableNo}`,
         customer_name: customerName || `Table ${tableNo} Customer`,
+        customer_email: customerEmail,
+        customer_phone: customerPhone
       }
     };
+
+    console.log("Order details:", order);
 
     const { payment_session_id } = await cashfree.pgOrderCreate(order);
     res.json({ 
       paymentSessionId: payment_session_id,
       orderId: order.order_id
     });
-    
   } catch (err) {
-    console.error("Payment error:", err);
+    console.error("Payment initiation error:", err);
     res.status(500).json({ 
       error: "Payment initiation failed",
       details: process.env.NODE_ENV === "development" ? err.message : undefined
@@ -526,49 +541,6 @@ app.use((err, req, res, next) => {
     status: 'error',
     message: 'An unexpected error occurred'
   });
-});
-
-// Add new route to match frontend expectations
-app.post('/api/payments/initiate', async (req, res) => {
-  console.log("Request received:", req.body);
-  try {
-    console.log("Request body:", req.body);
-    const { amount, customerDetails, cartItems } = req.body;
-    const { customerName, customerEmail, customerPhone } = customerDetails;
-
-    const tableNo = cartItems[0]?.tableNo || 'defaultTableNo';
-    if (!tableNo || tableNo === 'defaultTableNo') {
-      console.log("Invalid table number");
-      return res.status(400).json({ error: "Table number is required" });
-    }
-
-    const order = {
-      order_id: `RESTRO-${Date.now()}-${tableNo}`,
-      order_amount: amount,
-      order_currency: "INR",
-      order_note: `Table ${tableNo} - ${customerName || "Guest"}`,
-      customer_details: {
-        customer_id: `table-${tableNo}`,
-        customer_name: customerName || `Table ${tableNo} Customer`,
-        customer_email: customerEmail,
-        customer_phone: customerPhone
-      }
-    };
-
-    console.log("Order details:", order);
-
-    const { payment_session_id } = await cashfree.pgOrderCreate(order);
-    res.json({ 
-      paymentSessionId: payment_session_id,
-      orderId: order.order_id
-    });
-  } catch (err) {
-    console.error("Payment initiation error:", err);
-    res.status(500).json({ 
-      error: "Payment initiation failed",
-      details: process.env.NODE_ENV === "development" ? err.message : undefined
-    });
-  }
 });
 
 server.listen(port, () => {

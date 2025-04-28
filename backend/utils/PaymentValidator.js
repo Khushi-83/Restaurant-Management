@@ -12,7 +12,7 @@ class PaymentValidator {
   }
 
   static validateOrderDetails(orderDetails) {
-    const requiredFields = ['orderId', 'amount', 'tableNo'];
+    const requiredFields = ['amount', 'customerName', 'customerEmail', 'customerPhone', 'tableNo'];
     const missingFields = requiredFields.filter(field => !orderDetails[field]);
     
     if (missingFields.length > 0) {

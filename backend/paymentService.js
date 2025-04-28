@@ -23,12 +23,12 @@ class PaymentService {
       PaymentValidator.validateAmount(orderData.amount);
 
       const {
-        orderId,
         amount,
-        tableNo,
-        customerName = "Guest",
+        customerName,
         customerEmail,
-        customerPhone
+        customerPhone,
+        tableNo,
+        cartItems
       } = orderData;
 
       const order = {

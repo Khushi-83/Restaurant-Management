@@ -31,10 +31,11 @@ const errorHandler = (err, req, res, next) => {
 // Create payment session
 router.post('/initiate', async (req, res) => {
   try {
-    const { amount, orderId, customerDetails } = req.body;
+    const { amount, customerDetails, cartItems } = req.body;
+    const { customerName, customerEmail, customerPhone, tableNo } = customerDetails;
 
     // Validate input
-    if (!amount || !orderId || !customerDetails) {
+    if (!amount || !customerDetails || !cartItems || !tableNo) {
       return res.status(400).json({
         status: 'error',
         message: 'Missing required fields'
@@ -43,8 +44,11 @@ router.post('/initiate', async (req, res) => {
 
     const session = await PaymentService.createPaymentSession({
       amount,
-      orderId,
-      customerDetails
+      customerName,
+      customerEmail,
+      customerPhone,
+      tableNo,
+      cartItems
     });
 
     res.json({
