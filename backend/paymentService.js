@@ -1,201 +1,120 @@
+// PaymentService.js
+
+require("dotenv").config();
 const { Cashfree } = require("cashfree-pg");
-const { PaymentError, ERROR_CODES } = require('./utils/ErrorHandler');
-const PaymentValidator = require('./utils/PaymentValidator');
-const logger = require('./utils/logger');
+const { PaymentError, ERROR_CODES } = require("./utils/ErrorHandler");
+const logger = require("./utils/logger");
 
 class PaymentService {
   constructor() {
-    this.cf = new Cashfree({
-      env: process.env.CASHFREE_ENV || "TEST",
-      clientId: process.env.CASHFREE_APP_ID,
-      clientSecret: process.env.CASHFREE_SECRET_KEY,
-    });
-
-    // Retry configuration
-    this.maxRetries = 3;
-    this.retryDelay = 1000; // 1 second
-  }
-
-  async createPaymentSession(orderData) {
     try {
-      // Validate input data
-      PaymentValidator.validateOrderDetails(orderData);
-      PaymentValidator.validateAmount(orderData.amount);
+      if (!process.env.CASHFREE_APP_ID || !process.env.CASHFREE_SECRET_KEY) {
+        throw new Error("Missing Cashfree credentials");
+      }
 
-      const {
-        amount,
-        customerName,
-        customerEmail,
-        customerPhone,
-        tableNo,
-        cartItems
-      } = orderData;
+      // Choose environment
+      const env =
+        (process.env.CASHFREE_ENV || "TEST").toUpperCase() === "PRODUCTION"
+          ? Cashfree.PRODUCTION
+          : Cashfree.SANDBOX;
 
-      const order = {
-        order_id: `RESTRO-${Date.now()}-${tableNo}`,
-        order_amount: amount,
-        order_currency: "INR",
-        order_note: `Table ${tableNo} - ${customerName}`,
-        customer_details: {
-          customer_id: `CUST-${Date.now()}`,
-          customer_name: customerName,
-          customer_email: customerEmail || `guest_${Date.now()}@example.com`,
-          customer_phone: customerPhone || '9999999999'
-        },
-        order_meta: {
-          return_url: `${process.env.FRONTEND_URL}/payment/status?order_id={order_id}`,
-          notify_url: `${process.env.BACKEND_URL}/api/payment/webhook`,
-          payment_methods: "cc,dc,nb,upi,wallet"
-        }
-      };
-
-      // Add order to database before creating payment
-      await this.saveOrderToDatabase(order);
-
-      const response = await this.retryOperation(
-        () => this.cf.orders.create(order)
+      this.client = new Cashfree(
+        env,
+        process.env.CASHFREE_APP_ID,
+        process.env.CASHFREE_SECRET_KEY
       );
 
-      logger.info('Payment session created successfully', {
-        orderId: order.order_id,
-        amount: order.order_amount
-      });
-
-      return {
-        paymentSessionId: response.data.payment_session_id,
-        orderId: order.order_id,
-        amount: order.order_amount
-      };
-
-    } catch (error) {
-      logger.error('Payment session creation failed', {
-        error: error.message,
-        code: error.code,
-        details: error.details
-      });
-
+      logger.info("Cashfree client initialized", { env });
+      this.maxRetries = 3;
+      this.retryDelay = 1000;
+    } catch (err) {
+      logger.error("PaymentService init failed", { message: err.message });
       throw new PaymentError(
-        'Failed to create payment session',
-        ERROR_CODES.PAYMENT_CREATION_FAILED,
-        { originalError: error.message }
+        "Payment service initialization failed",
+        ERROR_CODES.INITIALIZATION_ERROR,
+        { originalError: err.message }
       );
     }
   }
 
-  async verifyPayment(orderId) {
+  /**  
+   * orderPayload must include:
+   * - order_id, order_amount, order_currency, order_note  
+   * - customer_details: { customer_id, customer_name, customer_email, customer_phone }  
+   * - order_meta: { return_url, notify_url, payment_methods }
+   */
+  async createPaymentSession(orderPayload) {
     try {
-      const response = await this.retryOperation(
-        () => this.cf.orders.get(orderId)
-      );
-
-      const paymentStatus = {
-        status: response.data.order_status,
-        amount: response.data.order_amount,
-        paymentId: response.data.cf_payment_id,
-        paymentMethod: response.data.payment_method,
-        lastUpdated: new Date().toISOString()
-      };
-
-      // Update order status in database
-      await this.updateOrderStatus(orderId, paymentStatus);
-
-      logger.info('Payment verified successfully', { orderId, ...paymentStatus });
-
-      return paymentStatus;
-
-    } catch (error) {
-      logger.error('Payment verification failed', {
-        orderId,
-        error: error.message
+      // Ensure required keys exist
+      [
+        "order_id",
+        "order_amount",
+        "order_currency",
+        "order_note",
+        "customer_details",
+        "order_meta"
+      ].forEach((k) => {
+        if (!orderPayload[k]) throw new Error(`Missing field: ${k}`);
       });
 
+      const resp = await this.retryOperation(() =>
+        this.client.pg.orders.create(orderPayload)
+      );
+
+      return {
+        paymentSessionId: resp.data.payment_session_id,
+        orderId: orderPayload.order_id,
+        amount: orderPayload.order_amount
+      };
+    } catch (err) {
+      logger.error("createPaymentSession failed", { message: err.message });
       throw new PaymentError(
-        'Payment verification failed',
-        ERROR_CODES.PAYMENT_VERIFICATION_FAILED,
-        { orderId }
+        "Payment session creation failed",
+        ERROR_CODES.PAYMENT_CREATION_FAILED,
+        { originalError: err.message }
       );
     }
   }
 
   async handleWebhook(payload, signature) {
     try {
-      // Validate webhook signature
-      PaymentValidator.validateWebhookSignature(payload, signature);
+      if (
+        !Cashfree.WebhookValidator.verify(
+          payload,
+          signature,
+          process.env.CASHFREE_SECRET_KEY
+        )
+      ) {
+        throw new Error("Invalid webhook signature");
+      }
 
-      const paymentData = {
+      return {
         orderId: payload.order_id,
         status: payload.order_status,
         amount: payload.order_amount,
         paymentId: payload.cf_payment_id,
-        paymentMethod: payload.payment_method,
-        metadata: {
-          tableNo: this.extractTableNo(payload.order_note),
-          customerName: payload.customer_details?.customer_name
-        }
+        tableNo: payload.order_note.match(/Table (\d+)/)?.[1] || null
       };
-
-      // Update order status in database
-      await this.updateOrderStatus(paymentData.orderId, paymentData);
-
-      // Emit event for real-time updates
-      this.emitPaymentUpdate(paymentData);
-
-      logger.info('Webhook processed successfully', paymentData);
-
-      return paymentData;
-
-    } catch (error) {
-      logger.error('Webhook processing failed', {
-        error: error.message,
-        payload
-      });
-
+    } catch (err) {
+      logger.error("handleWebhook failed", { message: err.message });
       throw new PaymentError(
-        'Webhook processing failed',
+        "Webhook processing failed",
         ERROR_CODES.INVALID_WEBHOOK_SIGNATURE,
-        { originalError: error.message }
+        { originalError: err.message }
       );
     }
   }
 
-  // Helper methods
-  async retryOperation(operation, retryCount = 0) {
+  async retryOperation(fn, attempt = 0) {
     try {
-      return await operation();
-    } catch (error) {
-      if (retryCount < this.maxRetries && this.shouldRetry(error)) {
-        await new Promise(resolve => setTimeout(resolve, this.retryDelay));
-        return this.retryOperation(operation, retryCount + 1);
+      return await fn();
+    } catch (err) {
+      if (attempt < this.maxRetries) {
+        await new Promise((r) => setTimeout(r, this.retryDelay));
+        return this.retryOperation(fn, attempt + 1);
       }
-      throw error;
+      throw err;
     }
-  }
-
-  shouldRetry(error) {
-    // Retry on network errors or 5xx server errors
-    return error.isAxiosError || (error.response?.status >= 500);
-  }
-
-  extractTableNo(orderNote) {
-    const tableNoMatch = orderNote?.match(/Table (\w+)/);
-    return tableNoMatch ? tableNoMatch[1] : null;
-  }
-
-  // Database operations (implement these based on your database)
-  async saveOrderToDatabase(order) {
-    // Implement based on your database
-    logger.info('Saving order to database', { orderId: order.order_id });
-  }
-
-  async updateOrderStatus(orderId, status) {
-    // Implement based on your database
-    logger.info('Updating order status', { orderId, status });
-  }
-
-  // Real-time updates (implement based on your websocket setup)
-  emitPaymentUpdate(paymentData) {
-    // Implement based on your websocket setup
-    logger.info('Emitting payment update', paymentData);
   }
 }
 

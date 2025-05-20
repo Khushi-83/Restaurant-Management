@@ -16,75 +16,83 @@ interface CheckoutButtonProps {
   };
 }
 
-export default function CheckoutButton({ cartItems, amount, customerDetails }: CheckoutButtonProps) {
+export default function CheckoutButton({
+  cartItems,
+  amount,
+  customerDetails
+}: CheckoutButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   const initializePayment = async () => {
     try {
       setIsLoading(true);
 
-      // Validate customer details
-      if (!customerDetails.name || !customerDetails.email || !customerDetails.phone || !customerDetails.tableNo) {
-        alert('Please provide complete customer details.');
-        setIsLoading(false);
+      const { name, email, phone, tableNo } = customerDetails;
+      if (!name || !email || !phone || !tableNo) {
+        alert('Please fill in all customer details.');
         return;
       }
 
-      // Remove duplicate table numbers from cart items
-      const uniqueCartItems = cartItems.filter((item, index, self) =>
-        index === self.findIndex((t) => (
-          t.tableNo === item.tableNo
-        ))
+      // de-dupe table numbers just in case
+      const uniqueCartItems = cartItems.filter((item, idx, arr) =>
+        idx === arr.findIndex((t) => t.tableNo === item.tableNo)
       );
 
-      console.log('Initializing payment with details:', {
+      // build the new payload shape
+      const payload = {
         amount,
-        customerDetails,
-        cartItems: uniqueCartItems
-      });
-
-      const orderResponse = await fetch('http://localhost:5000/api/payments/initiate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+        cartItems: uniqueCartItems,
+        customer_details: {
+          customerName: name,
+          customerEmail: email,
+          customerPhone: phone,
+          tableNo
         },
-        body: JSON.stringify({
-          amount,
-          customerDetails: {
-            customerName: customerDetails.name,
-            customerEmail: customerDetails.email,
-            customerPhone: customerDetails.phone,
-            tableNo: customerDetails.tableNo
-          },
-          cartItems: uniqueCartItems,
-        }),
+        order_meta: {
+          return_url: `${window.location.origin}/payment/status?order_id={order_id}`,
+          notify_url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/payments/webhook`,
+          payment_methods: 'cc,dc,nb,upi,wallet'
+        }
+      };
+
+      const res = await fetch('/api/payments/initiate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
 
-      console.log('Order response status:', orderResponse.status);
-
-      if (!orderResponse.ok) {
-        throw new Error('Failed to create payment order');
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to create payment session');
       }
 
-      const { paymentSessionId } = await orderResponse.json();
+      const { paymentSessionId, orderId } = await res.json();
 
-      if (typeof window !== 'undefined' && window.Cashfree) {
-        window.Cashfree.initialize({
-          paymentSessionId,
-          returnUrl: `${window.location.origin}/payment/status`,
-          paymentModes: {
-            upi: { flow: 'intent' },
-            card: { channel: 'link' },
-            netbanking: {},
-            wallet: {}
-          }
-        });
-      } else {
+      if (!paymentSessionId) {
+        throw new Error('No paymentSessionId returned');
+      }
+
+      if (!window.Cashfree) {
         throw new Error('Cashfree SDK not loaded');
       }
-    } catch (error) {
-      console.error('Payment initialization error:', error);
-      alert('Payment initialization failed. Please try again.');
+
+      window.Cashfree.initialize({
+        paymentSessionId,
+        returnUrl: `${window.location.origin}/payment/status?order_id=${orderId}`,
+        paymentModes: {
+          upi: { flow: 'intent' },
+          card: { channel: 'link' },
+          netbanking: {},
+          wallet: {}
+        }
+      });
+    } catch (e: unknown) {
+      console.error('Payment initialization error:', e);
+      if (e instanceof Error) {
+        alert(e.message || 'Payment failed');
+      } else {
+        alert('Payment failed');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -95,13 +103,16 @@ export default function CheckoutButton({ cartItems, amount, customerDetails }: C
       <Script
         src="https://sdk.cashfree.com/js/v3/cashfree.js"
         strategy="lazyOnload"
+        onError={() => {
+          alert('Failed to load Cashfree SDK. Please reload.');
+        }}
       />
       <Button
         onClick={initializePayment}
         disabled={isLoading}
         className="w-full bg-red-600 hover:bg-red-700 text-white"
       >
-        {isLoading ? 'Processing...' : 'Pay Now'}
+        {isLoading ? 'Processing…' : 'Pay Now'}
       </Button>
     </>
   );
