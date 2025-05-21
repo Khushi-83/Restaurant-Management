@@ -78,13 +78,13 @@ app.get("/api/food-items", async (req, res) => {
 // Order Routes (unchanged)
 app.post("/api/orders", async (req, res) => {
   try {
-    const { customerDetails = {}, cartItems, amount, paymentMethod } = req.body;
+    const { customer_details = {}, cartItems, amount } = req.body;
     const {
       name: customerName,
       email: customerEmail,
       phone: customerPhone,
       tableNo
-    } = customerDetails;
+    } = customer_details;
 
     // Basic validation
     if (!customerName?.trim()) throw new Error("Customer name is required");
@@ -93,16 +93,12 @@ app.post("/api/orders", async (req, res) => {
       throw new Error("Cart items are required");
     if (!amount || isNaN(amount) || amount <= 0)
       throw new Error("Valid amount is required");
-    const pm = (paymentMethod || "cash").toLowerCase();
-    if (!["cash", "online"].includes(pm))
-      throw new Error("paymentMethod must be 'cash' or 'online'");
-
+    
     const order = {
       customer_name: customerName.trim(),
       table_number: tableNo,
       items: JSON.stringify(cartItems),
       total_price: amount,
-      payment_method: pm,
       status: pm === "cash" ? "Pending" : "Awaiting Payment",
       created_at: new Date().toISOString(),
       order_id: `ORDER-${Date.now()}-${tableNo}`
