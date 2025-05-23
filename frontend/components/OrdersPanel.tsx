@@ -6,10 +6,10 @@ interface OrderType {
   key: string;
   orderId: string;
   customerName: string;
-  tableNumber: string;
-  items: string;
+  tableNo: string;
+  items: { name: string; quantity: number; price: number }[];
   preferences: string[];
-  status: 'pending' | 'preparing' | 'ready' | 'delivered';
+  status: string;
   time: string;
 }
 
@@ -27,17 +27,17 @@ export default function OrdersPanel() {
     },
     {
       title: 'Table',
-      dataIndex: 'tableNumber',
-      key: 'tableNumber',
+      dataIndex: 'tableNo',
+      key: 'tableNo',
     },
     {
       title: 'Items',
       dataIndex: 'items',
       key: 'items',
-      render: (items) => (
+      render: (items: OrderType['items']) => (
         <div style={{ maxWidth: 200 }}>
-          {items.split(',').map((item: string, index: number) => (
-            <div key={index}>{item}</div>
+          {items.map((item, index) => (
+            <div key={index}>{item.name} × {item.quantity} (₹{item.price})</div>
           ))}
         </div>
       ),
@@ -60,16 +60,26 @@ export default function OrdersPanel() {
       title: 'Status',
       key: 'status',
       dataIndex: 'status',
-      render: (status) => {
+      render: (status: string) => {
         let color, icon;
         switch (status) {
           case 'ready':
+          case 'Ready':
             color = 'green';
             icon = <CheckCircleOutlined />;
             break;
           case 'preparing':
+          case 'Preparing':
             color = 'orange';
             icon = <ClockCircleOutlined />;
+            break;
+          case 'Awaiting Payment':
+            color = 'blue';
+            icon = <ClockCircleOutlined />;
+            break;
+          case 'Paid':
+            color = 'green';
+            icon = <CheckCircleOutlined />;
             break;
           default:
             color = 'gray';
@@ -84,19 +94,19 @@ export default function OrdersPanel() {
     {
       title: 'Action',
       key: 'action',
-      render: (_, record) => (
+      render: (_: string, record: OrderType) => (
         <Space size="middle">
           <Button 
             type="primary" 
             size="small"
-            onClick={() => handleStatusUpdate(record.orderId, 'ready')}
+            onClick={() => handleStatusUpdate(record.orderId, 'Ready')}
           >
             Mark Ready
           </Button>
           <Button 
             type="default" 
             size="small"
-            onClick={() => handleStatusUpdate(record.orderId, 'delivered')}
+            onClick={() => handleStatusUpdate(record.orderId, 'Delivered')}
           >
             Mark Delivered
           </Button>
@@ -110,10 +120,14 @@ export default function OrdersPanel() {
       key: '1',
       orderId: 'ORD-001',
       customerName: 'John Doe',
-      tableNumber: 'A5',
-      items: 'Paneer Tikka, Butter Naan, Coke',
+      tableNo: 'A5',
+      items: [
+        { name: 'Paneer Tikka', quantity: 2, price: 250 },
+        { name: 'Butter Naan', quantity: 3, price: 40 },
+        { name: 'Coke', quantity: 1, price: 60 },
+      ],
       preferences: ['Extra Spicy', 'No Onion'],
-      status: 'preparing',
+      status: 'Preparing',
       time: '12:30 PM'
     },
     // More sample data...
