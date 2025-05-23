@@ -13,7 +13,7 @@ export type PaymentStatus = 'idle' | 'processing' | 'success' | 'failed';
 declare global {
   interface Window {
     Cashfree: {
-      initialize: (options: {
+      initialize?: (options: {
         paymentSessionId: string;
         returnUrl: string;
         paymentModes?: {
@@ -25,6 +25,11 @@ declare global {
           netbanking?: Record<string, never>;
           wallet?: Record<string, never>;
         };
+      }) => void;
+      checkout: (options: {
+        paymentSessionId: string;
+        redirectTarget?: '_self' | '_blank' | '_top' | '_modal' | HTMLElement;
+        mode?: 'sandbox' | 'production';
       }) => void;
     };
   }

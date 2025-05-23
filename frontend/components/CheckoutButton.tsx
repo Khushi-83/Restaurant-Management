@@ -42,7 +42,7 @@ export default function CheckoutButton({
       const payload = {
         amount,
         cartItems: uniqueCartItems,
-        customer_details: {
+        customerDetails: {
           customerName: name,
           customerEmail: email,
           customerPhone: phone,
@@ -51,7 +51,7 @@ export default function CheckoutButton({
         order_meta: {
           return_url: `${window.location.origin}/payment/status?order_id={order_id}`,
           notify_url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/payments/webhook`,
-          payment_methods: 'cc,dc,nb,upi,wallet'
+          payment_methods: 'upi'
         }
       };
 
@@ -66,7 +66,7 @@ export default function CheckoutButton({
         throw new Error(err.error || 'Failed to create payment session');
       }
 
-      const { paymentSessionId, orderId } = await res.json();
+      const { paymentSessionId } = await res.json();
 
       if (!paymentSessionId) {
         throw new Error('No paymentSessionId returned');
@@ -76,15 +76,11 @@ export default function CheckoutButton({
         throw new Error('Cashfree SDK not loaded');
       }
 
-      window.Cashfree.initialize({
+      // Use Cashfree SDK as per docs
+      window.Cashfree.checkout({
         paymentSessionId,
-        returnUrl: `${window.location.origin}/payment/status?order_id=${orderId}`,
-        paymentModes: {
-          upi: { flow: 'intent' },
-          card: { channel: 'link' },
-          netbanking: {},
-          wallet: {}
-        }
+        redirectTarget: '_self',
+        mode: 'production',
       });
     } catch (e: unknown) {
       console.error('Payment initialization error:', e);

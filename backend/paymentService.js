@@ -57,6 +57,9 @@ class PaymentService {
         if (!orderPayload[k]) throw new Error(`Missing field: ${k}`);
       });
 
+      // Always enforce payment_methods to 'upi' only
+      orderPayload.order_meta.payment_methods = 'upi';
+
       const resp = await this.retryOperation(() =>
         this.client.pg.orders.create(orderPayload)
       );

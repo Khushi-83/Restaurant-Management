@@ -1,5 +1,4 @@
-
-    // server.js
+// server.js
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
@@ -78,68 +77,6 @@ app.get("/api/food-items", async (req, res) => {
 // Order Routes (unchanged)
 app.post("/api/orders", async (req, res) => {
   try {
-    const { customer_details = {}, cartItems, amount } = req.body;
-    const {
-      name: customerName,
-      email: customerEmail,
-      phone: customerPhone,
-      tableNo
-    } = customer_details;
-
-    // Basic validation
-    if (!customerName?.trim()) throw new Error("Customer name is required");
-    if (!tableNo) throw new Error("Table number is required");
-    if (!Array.isArray(cartItems) || cartItems.length === 0)
-      throw new Error("Cart items are required");
-    if (!amount || isNaN(amount) || amount <= 0)
-      throw new Error("Valid amount is required");
-    
-    const order = {
-      customer_name: customerName.trim(),
-      table_number: tableNo,
-      items: JSON.stringify(cartItems),
-      total_price: amount,
-      status: pm === "cash" ? "Pending" : "Awaiting Payment",
-      created_at: new Date().toISOString(),
-      order_id: `ORDER-${Date.now()}-${tableNo}`
-    };
-
-    const { data, error } = await supabase
-      .from("orders")
-      .insert([order])
-      .select();
-    if (error) throw error;
-
-    const saved = data[0];
-    const itemsParsed = JSON.parse(saved.items);
-
-    io.emit("order_update", {
-      ...saved,
-      event_type: "new_order",
-      timestamp: new Date().toISOString(),
-      items: itemsParsed
-    });
-    io.to(`table_${tableNo}`).emit("table_order_update", {
-      ...saved,
-      items: itemsParsed
-    });
-    io.to("admin_room").emit("admin_order_update", {
-      ...saved,
-      items: itemsParsed
-    });
-
-    res.status(201).json({ ...saved, items: itemsParsed });
-  } catch (err) {
-    logger.error("Order error", err);
-    res.status(400).json({ error: err.message });
-  }
-});
-
-// Fetch orders
-// server.js — updated /api/orders
-
-app.post("/api/orders", async (req, res) => {
-  try {
     // 1. Destructure using camelCase
     const { customerDetails = {}, cartItems, amount, paymentMethod } = req.body;
     const {
@@ -173,8 +110,8 @@ app.post("/api/orders", async (req, res) => {
       table_number: tableNo,
       items: JSON.stringify(cartItems),
       total_price: amount,
-      payment_method: pm,
-      status: pm === "cash" ? "Pending" : "Awaiting Payment",
+      payment_method: 'upi',
+      status: 'Awaiting Payment',
       created_at: new Date().toISOString(),
       order_id: `ORDER-${Date.now()}-${tableNo}`
     };
@@ -225,14 +162,15 @@ app.post("/api/orders", async (req, res) => {
 app.post("/api/payments/initiate", async (req, res) => {
   try {
     // 1. Destructure exactly what your frontend sends:
-    const { amount, cartItems, customer_details, order_meta } = req.body;
+    const { amount, cartItems, customerDetails, order_meta } = req.body;
+    const customer_details = customerDetails; // Map camelCase to snake_case for backend
     const {
       customerName,
       customerEmail,
       customerPhone,
       tableNo
     } = customer_details || {};
-    const { return_url, notify_url, payment_methods } = order_meta || {};
+    const { return_url, notify_url } = order_meta || {};
 
     // 2. Quick validations
     if (!amount || isNaN(amount) || amount <= 0) {
@@ -254,16 +192,11 @@ app.post("/api/payments/initiate", async (req, res) => {
       order_amount: amount,
       order_currency: "INR",
       order_note: `Table ${tableNo} - ${customerName}`,
-      customer_details: {
-        customer_id: `CUST-${Date.now()}`,
-        customer_name: customerName,
-        customer_email: customerEmail,
-        customer_phone: customerPhone
-      },
+      customer_details, // Use snake_case for backend/validator
       order_meta: {
         return_url,
         notify_url,
-        payment_methods: payment_methods || "cc,dc,nb,upi,wallet"
+        payment_methods: 'upi'
       }
     };
 

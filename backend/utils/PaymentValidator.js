@@ -48,7 +48,7 @@ class PaymentValidator {
         ERROR_CODES.PAYMENT_CREATION_FAILED
       );
     }
-    const { return_url, notify_url } = meta;
+    const { return_url, notify_url, payment_methods } = meta;
     const missing = [];
     if (!return_url) missing.push('return_url');
     if (!notify_url) missing.push('notify_url');
@@ -58,6 +58,13 @@ class PaymentValidator {
         'Missing required order_meta fields',
         ERROR_CODES.PAYMENT_CREATION_FAILED,
         { missingFields: missing }
+      );
+    }
+    // Enforce payment_methods to be 'upi' only if present
+    if (payment_methods && payment_methods !== 'upi') {
+      throw new PaymentError(
+        'Only UPI payment is allowed',
+        ERROR_CODES.PAYMENT_CREATION_FAILED
       );
     }
   }
