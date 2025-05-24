@@ -1,4 +1,3 @@
-// server.js
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
@@ -7,30 +6,58 @@ const { Cashfree } = require("cashfree-pg");
 const http = require("http");
 const { Server } = require("socket.io");
 const helmet = require('helmet');
-const { PaymentError, ERROR_CODES }   = require("./utils/ErrorHandler");
-const PaymentValidator               = require("./utils/PaymentValidator");
-const logger              = require("./utils/logger");
+const { PaymentError, ERROR_CODES } = require("./utils/ErrorHandler");
+const logger = require("./utils/logger");
 const PaymentService = require('./PaymentService.js'); 
 
 const app = express();
 const server = http.createServer(app);
 
-// Supabase Client (unchanged)
+// Initialize Supabase
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
-// Socket.IO setup (unchanged)
+// Verify Supabase connection
+supabase
+  .from('food_items')
+  .select('*')
+  .limit(1)
+  .then(({ data, error }) => {
+    if (error) {
+      console.error('❌ Supabase connection error:', error);
+    } else {
+      console.log('✅ Supabase connected successfully');
+    }
+  });
+
+// Configure CORS
+const corsOptions = {
+  origin: process.env.NODE_ENV === "production"
+    ? [
+        process.env.FRONTEND_URL,
+        process.env.ADMIN_URL
+      ]
+    : "http://localhost:3000",
+  methods: ['GET','POST','PUT','DELETE'],
+  credentials: true,
+  allowedHeaders: ['Content-Type','Authorization']
+};
+
+// Middleware
+app.use(helmet());
+app.use(cors(corsOptions));
+app.use(express.json({ limit: '10mb' }));
+app.use((req, res, next) => {
+  logger.info('Incoming request', { 
+    method: req.method, 
+    path: req.path,
+    ip: req.ip
+  });
+  next();
+});
+
+// Socket.IO Configuration
 const io = new Server(server, {
-  cors: {
-    origin: process.env.NODE_ENV === "production"
-      ? [
-          "https://restaurant-management-pied.vercel.app",
-          "https://restaurant-management-pied.vercel.app/admin"
-        ]
-      : ["http://localhost:3000"],
-    methods: ["GET","POST"],
-    credentials: true,
-    allowedHeaders: ['Content-Type','Authorization']
-  },
+  cors: corsOptions,
   transports: ['websocket','polling'],
   pingTimeout: 60000,
   pingInterval: 25000
@@ -38,88 +65,61 @@ const io = new Server(server, {
 
 const port = process.env.PORT || 5000;
 
-// Middleware (unchanged)
-app.use(helmet());
-app.use(cors({
-  origin: process.env.NODE_ENV === "production"
-    ? process.env.FRONTEND_URL.split(',')
-    : "http://localhost:3000",
-  methods: ['GET','POST'],
-  credentials: true
-}));
-app.use(express.json({ limit: '10mb' }));
-app.use((req, res, next) => {
-  logger.info('Incoming request', { method: req.method, path: req.path, ip: req.ip });
-  next();
-});
-
-// Health Check (unchanged)
+// Health Check Endpoint
 app.get("/", (req, res) => {
   res.status(200).json({
     status: "healthy",
     message: "Restaurant Management System API",
+    version: "1.0.0",
+    environment: process.env.NODE_ENV || "development",
     websocket: io.engine.clientsCount > 0 ? "active" : "inactive"
   });
 });
 
-// Food Items Routes (unchanged)
+// Food Items Endpoint
 app.get("/api/food-items", async (req, res) => {
   try {
     const { data, error } = await supabase
       .from("food_items")
       .select("*")
       .order("category", { ascending: true });
+
     if (error) throw error;
+    
     res.json(data);
   } catch (err) {
-    console.error("Food items error:", err);
-    res.status(500).json({ error: "Failed to fetch food items" });
+    logger.error("Food items error:", err);
+    res.status(500).json({ 
+      error: "Failed to fetch food items",
+      ...(process.env.NODE_ENV === "development" && { details: err.message })
+    });
   }
 });
 
-// Order Routes (unchanged)
+// Orders Endpoint
 app.post("/api/orders", async (req, res) => {
   try {
-    // 1. Destructure using camelCase
     const { customerDetails = {}, cartItems, amount, paymentMethod } = req.body;
-    const {
-      name: customerName,
-      email: customerEmail,
-      phone: customerPhone,
-      tableNo
-    } = customerDetails;
+    const { name, email, phone, tableNo } = customerDetails;
 
-    // 2. Basic validation
-    if (!customerName?.trim()) {
-      return res.status(400).json({ error: "Customer name is required" });
-    }
-    if (!tableNo) {
-      return res.status(400).json({ error: "Table number is required" });
-    }
-    if (!Array.isArray(cartItems) || cartItems.length === 0) {
-      return res.status(400).json({ error: "Cart items are required" });
-    }
-    if (!amount || isNaN(amount) || amount <= 0) {
-      return res.status(400).json({ error: "Valid amount is required" });
-    }
-    const pm = (paymentMethod || "cash").toLowerCase();
-    if (!["cash", "online"].includes(pm)) {
-      return res.status(400).json({ error: "paymentMethod must be 'cash' or 'online'" });
-    }
+    // Validation
+    if (!name?.trim()) return res.status(400).json({ error: "Customer name is required" });
+    if (!tableNo) return res.status(400).json({ error: "Table number is required" });
+    if (!Array.isArray(cartItems)) return res.status(400).json({ error: "Cart items must be an array" });
+    if (cartItems.length === 0) return res.status(400).json({ error: "Cart cannot be empty" });
+    if (!amount || isNaN(amount)) return res.status(400).json({ error: "Valid amount is required" });
 
-    // 3. Build DB payload (snake_case to match your table columns)
     const order = {
-      customer_name: customerName.trim(),
+      customer_name: name.trim(),
       table_number: tableNo,
       items: JSON.stringify(cartItems),
       total_price: amount,
-      payment_method: 'upi',
+      payment_method: paymentMethod?.toLowerCase() === 'cash' ? 'cash' : 'upi',
       status: 'Awaiting Payment',
       created_at: new Date().toISOString(),
       order_id: `ORDER-${Date.now()}-${tableNo}`
     };
 
-    // 4. Insert and emit
     const { data, error } = await supabase
       .from("orders")
       .insert([order])
@@ -127,119 +127,97 @@ app.post("/api/orders", async (req, res) => {
 
     if (error) throw error;
 
-    const saved = data[0];
-    const itemsParsed = JSON.parse(saved.items);
+    const savedOrder = data[0];
+    const items = JSON.parse(savedOrder.items);
 
+    // Socket notifications
     io.emit("order_update", {
-      ...saved,
+      ...savedOrder,
       event_type: "new_order",
       timestamp: new Date().toISOString(),
-      items: itemsParsed
+      items
     });
-    io.to(`table_${tableNo}`).emit("table_order_update", {
-      ...saved,
-      items: itemsParsed
-    });
-    io.to("admin_room").emit("admin_order_update", {
-      ...saved,
-      items: itemsParsed
-    });
+    io.to(`table_${tableNo}`).emit("table_order_update", savedOrder);
+    io.to("admin_room").emit("admin_order_update", savedOrder);
 
-    // 5. Respond
-    res.status(201).json({ ...saved, items: itemsParsed });
+    res.status(201).json({ ...savedOrder, items });
   } catch (err) {
-    logger.error("Order error", err);
+    logger.error("Order error:", err);
     res.status(500).json({
       error: "Failed to create order",
-      details: process.env.NODE_ENV === "development" ? err.message : undefined
+      ...(process.env.NODE_ENV === "development" && { details: err.message })
     });
   }
 });
 
-// Payment Routes (updated for Cashfree v5)
-
-// server.js (excerpt)
-
-// server.js — /api/payments/initiate
-
+// Payment Endpoints
 app.post("/api/payments/initiate", async (req, res) => {
   try {
-    // 1. Destructure exactly what your frontend sends:
-    const { amount, cartItems, customerDetails, order_meta } = req.body;
-    const customer_details = customerDetails; // Map camelCase to snake_case for backend
-    const {
-      customerName,
-      customerEmail,
-      customerPhone,
-      tableNo
-    } = customer_details || {};
-    const { return_url, notify_url } = order_meta || {};
+    const { amount, cartItems, customerDetails } = req.body;
+    const { name: customerName, email: customerEmail, phone: customerPhone, tableNo } = customerDetails || {};
 
-    // 2. Quick validations
-    if (!amount || isNaN(amount) || amount <= 0) {
-      throw new PaymentError("Valid amount is required", ERROR_CODES.INVALID_AMOUNT);
-    }
-    if (!Array.isArray(cartItems) || cartItems.length === 0) {
-      throw new PaymentError("Cart items are required", ERROR_CODES.PAYMENT_CREATION_FAILED);
-    }
+    // Validation
+    if (!amount || isNaN(amount)) throw new PaymentError("Valid amount is required", ERROR_CODES.INVALID_AMOUNT);
+    if (!Array.isArray(cartItems)) throw new PaymentError("Cart items must be an array", ERROR_CODES.INVALID_DATA);
     if (!customerName || !customerEmail || !customerPhone || !tableNo) {
       throw new PaymentError("Missing customer details", ERROR_CODES.MISSING_CUSTOMER_DETAILS);
     }
-    if (!return_url || !notify_url) {
-      throw new PaymentError("Both return_url and notify_url are required", ERROR_CODES.PAYMENT_CREATION_FAILED);
-    }
 
-    // 3. Build the official Cashfree payload
     const orderPayload = {
       order_id: `RESTRO-${Date.now()}-${tableNo}`,
       order_amount: amount,
       order_currency: "INR",
       order_note: `Table ${tableNo} - ${customerName}`,
-      customer_details, // Use snake_case for backend/validator
+      customer_details: {
+        customer_id: `cust-${Date.now()}`,
+        customer_name: customerName,
+        customer_email: customerEmail,
+        customer_phone: customerPhone
+      },
       order_meta: {
-        return_url: "http://localhost:3000/payment/success?order_id={order_id}",
-        notify_url: "https://restaurant-management-o4sl.onrender.com/api/payments/webhook",
-        payment_methods: 'upi'
+        return_url: `${process.env.FRONTEND_URL}/payment/success?order_id={order_id}`,
+        notify_url: `${process.env.BACKEND_URL}/api/payments/webhook`,
+        payment_methods: 'upi,netbanking'
       }
     };
 
-    // 4. Delegate to your PaymentService
-    const session = await paymentService.createPaymentSession(orderPayload);
-
-    // 5. Return the session info
+    const session = await PaymentService.createPaymentSession(orderPayload);
     res.json(session);
-
   } catch (err) {
     logger.error("Payment initiation error", err);
     const status = err instanceof PaymentError ? 400 : 500;
-    res.status(status).json({ error: err.message });
+    res.status(status).json({ 
+      error: err.message,
+      ...(process.env.NODE_ENV === "development" && { stack: err.stack })
+    });
   }
 });
 
-
-app.post("/api/payments/webhook", express.json(), async (req, res) => {
+app.post("/api/payments/webhook", express.raw({ type: 'application/json' }), async (req, res) => {
   try {
     const signature = req.headers['x-cf-signature'];
-    const result = await paymentService.handleWebhook(req.body, signature);
+    const rawBody = req.body.toString();
     
-    // Broadcast payment update (unchanged)
+    const result = await PaymentService.handleWebhook(JSON.parse(rawBody), signature);
+    
+    // Broadcast payment update
     io.emit("payment_update", result);
     if (result.tableNo) {
       io.to(`table_${result.tableNo}`).emit("table_payment_update", result);
     }
     io.to("admin_room").emit("admin_payment_update", result);
 
-    res.json(result);
+    res.json({ status: 'success' });
   } catch (error) {
-    console.error("Webhook error:", error);
+    logger.error("Webhook processing failed", error);
     res.status(400).json({
       error: "Webhook processing failed",
-      details: process.env.NODE_ENV === "development" ? error.message : undefined
+      ...(process.env.NODE_ENV === "development" && { details: error.message })
     });
   }
 });
 
-// Chat Routes (unchanged)
+// Chat Endpoints
 app.get("/api/chat/messages", async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -250,10 +228,10 @@ app.get("/api/chat/messages", async (req, res) => {
     if (error) throw error;
     res.json(data);
   } catch (err) {
-    console.error("Chat messages fetch error:", err);
+    logger.error("Chat messages fetch error:", err);
     res.status(500).json({ 
       error: "Failed to fetch messages",
-      details: process.env.NODE_ENV === "development" ? err.message : undefined
+      ...(process.env.NODE_ENV === "development" && { details: err.message })
     });
   }
 });
@@ -277,38 +255,37 @@ app.post("/api/chat", async (req, res) => {
       .select();
 
     if (error) throw error;
+
+    const newMessage = data[0];
+    io.emit("new_message", newMessage);
+    io.to("admin_room").emit("admin_new_message", newMessage);
     
-    // Emit to all clients and specifically to admin
-    io.emit("new_message", data[0]);
-    io.to("admin_room").emit("admin_new_message", data[0]);
-    
-    res.status(201).json(data[0]);
+    res.status(201).json(newMessage);
   } catch (err) {
-    console.error("Chat error:", err);
+    logger.error("Chat error:", err);
     res.status(500).json({ 
       error: "Failed to send message",
-      details: process.env.NODE_ENV === "development" ? err.message : undefined
+      ...(process.env.NODE_ENV === "development" && { details: err.message })
     });
   }
 });
 
-// Socket connection handling (unchanged)
+// Socket.IO Handlers
 io.on("connection", (socket) => {
-  console.log(`Client connected: ${socket.id}`);
+  logger.info(`Client connected: ${socket.id}`);
   
   socket.on("join_admin", () => {
     socket.join("admin_room");
-    console.log(`Admin dashboard connected: ${socket.id}`);
+    logger.info(`Admin dashboard connected: ${socket.id}`);
   });
   
   socket.on("join_table", (tableNo) => {
     socket.join(`table_${tableNo}`);
-    console.log(`Socket ${socket.id} joined table ${tableNo}`);
+    logger.info(`Socket ${socket.id} joined table ${tableNo}`);
   });
 
   socket.on("submit_feedback", async (feedbackData) => {
     try {
-      // Store feedback in database
       const { error } = await supabase
         .from("feedback")
         .insert([{
@@ -319,48 +296,46 @@ io.on("connection", (socket) => {
 
       if (error) throw error;
 
-      // Send confirmation to the submitting client
       socket.emit("feedback_received");
-
-      // Notify admin dashboard
       io.to("admin_room").emit("new_feedback", {
         ...feedbackData,
         timestamp: new Date().toISOString()
       });
-
     } catch (err) {
-      console.error("Feedback submission error:", err);
-      socket.emit("feedback_error", { 
-        message: "Failed to submit feedback"
-      });
+      logger.error("Feedback submission error:", err);
+      socket.emit("feedback_error", { message: "Failed to submit feedback" });
     }
   });
 
-  socket.on("error", (error) => {
-    console.error(`Socket ${socket.id} error:`, error);
-  });
-  
   socket.on("disconnect", (reason) => {
-    console.log(`Client disconnected: ${socket.id}, reason: ${reason}`);
+    logger.info(`Client disconnected: ${socket.id}, reason: ${reason}`);
   });
 });
 
-// Global error handler (unchanged)
+// Error Handling
 app.use((err, req, res, next) => {
   logger.error('Unhandled error', {
     error: err.message,
-    stack: err.stack
+    stack: err.stack,
+    path: req.path,
+    method: req.method
   });
 
   res.status(500).json({
-    status: 'error',  
-    message: 'An unexpected error occurred'
+    status: 'error',
+    message: 'An unexpected error occurred',
+    ...(process.env.NODE_ENV === "development" && { details: err.message })
   });
 });
 
-server.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-  console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
-  console.log(`CORS allowed origins: ${process.env.FRONTEND_URL || "http://localhost:3000"}, http://localhost:3000/admin`);
-  console.log(`WebSocket server ready`);
+// Server Startup
+server.listen(port, '0.0.0.0', () => {
+  console.log(`
+  🚀 Server running on port ${port}
+  ⚙️  Environment: ${process.env.NODE_ENV || "development"}
+  🌐 Frontend URL: ${process.env.FRONTEND_URL}
+  🔗 Backend URL: ${process.env.BACKEND_URL}
+  💾 Supabase URL: ${process.env.SUPABASE_URL}
+  📡 WebSocket server ready
+  `);
 });
