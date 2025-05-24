@@ -10,7 +10,7 @@ const helmet = require('helmet');
 const { PaymentError, ERROR_CODES }   = require("./utils/ErrorHandler");
 const PaymentValidator               = require("./utils/PaymentValidator");
 const logger              = require("./utils/logger");
-const PaymentService = require('./backend/PaymentService.js'); 
+const PaymentService = require('./PaymentService.js'); 
 
 const app = express();
 const server = http.createServer(app);
