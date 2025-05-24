@@ -65,7 +65,8 @@ const FoodCard = ({ item }: { item: FoodItem }) => {
         <button 
           onClick={() => addToCart({
             ...item,
-            id: item.id.toString()
+            id: item.id.toString(),
+            tableNo: "1" // Default table number
           })}
           className="mt-3 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition"
         >

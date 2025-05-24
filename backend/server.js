@@ -194,8 +194,8 @@ app.post("/api/payments/initiate", async (req, res) => {
       order_note: `Table ${tableNo} - ${customerName}`,
       customer_details, // Use snake_case for backend/validator
       order_meta: {
-        return_url: "http://localhost:3000/payment/success",
-        notify_url,
+        return_url: "http://localhost:3000/payment/success?order_id={order_id}",
+        notify_url: "http://localhost:5000/api/payments/webhook",
         payment_methods: 'upi'
       }
     };
