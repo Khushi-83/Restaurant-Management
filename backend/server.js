@@ -22,7 +22,10 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
 const io = new Server(server, {
   cors: {
     origin: process.env.NODE_ENV === "production"
-      ? process.env.FRONTEND_URL.split(',')
+      ? [
+          "https://restaurant-management-pied.vercel.app",
+          "https://restaurant-management-pied.vercel.app/admin"
+        ]
       : ["http://localhost:3000"],
     methods: ["GET","POST"],
     credentials: true,
@@ -195,7 +198,7 @@ app.post("/api/payments/initiate", async (req, res) => {
       customer_details, // Use snake_case for backend/validator
       order_meta: {
         return_url: "http://localhost:3000/payment/success?order_id={order_id}",
-        notify_url: "http://localhost:5000/api/payments/webhook",
+        notify_url: "https://restaurant-management-o4sl.onrender.com/api/payments/webhook",
         payment_methods: 'upi'
       }
     };
