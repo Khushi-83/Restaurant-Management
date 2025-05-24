@@ -16,7 +16,7 @@ const MainCourse = () => {
   const [MainCourse, setMainCourse] = useState<FoodItem[]>([]);
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/food-items`)
+    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/food-items`)
       .then((res) => res.json())
       .then((data: FoodItem[]) => {
         const filteredItems = data.filter((item) => item.category === "Main Course");
