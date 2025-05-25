@@ -121,3 +121,4 @@ const FoodCard = ({ item }: { item: FoodItem }) => {
   );
 };
 
+export default Desserts;
