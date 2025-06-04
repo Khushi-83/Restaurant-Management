@@ -102,22 +102,28 @@ app.post("/api/orders", async (req, res) => {
     const { customerDetails = {}, cartItems, amount, paymentMethod } = req.body;
     const { name, email, phone, tableNo } = customerDetails;
 
-    // Validation
-    if (!name?.trim()) return res.status(400).json({ error: "Customer name is required" });
-    if (!tableNo) return res.status(400).json({ error: "Table number is required" });
-    if (!Array.isArray(cartItems)) return res.status(400).json({ error: "Cart items must be an array" });
-    if (cartItems.length === 0) return res.status(400).json({ error: "Cart cannot be empty" });
-    if (!amount || isNaN(amount)) return res.status(400).json({ error: "Valid amount is required" });
+    // Enhanced Validation
+    if (!name?.trim()) throw new PaymentError("Customer name is required", ERROR_CODES.MISSING_CUSTOMER_DETAILS);
+    if (!email?.trim()) throw new PaymentError("Customer email is required", ERROR_CODES.MISSING_CUSTOMER_DETAILS);
+    if (!phone?.trim()) throw new PaymentError("Customer phone is required", ERROR_CODES.MISSING_CUSTOMER_DETAILS);
+    if (!tableNo) throw new PaymentError("Table number is required", ERROR_CODES.MISSING_CUSTOMER_DETAILS);
+    if (!Array.isArray(cartItems)) throw new PaymentError("Cart items must be an array", ERROR_CODES.INVALID_DATA);
+    if (cartItems.length === 0) throw new PaymentError("Cart cannot be empty", ERROR_CODES.INVALID_DATA);
+    if (!amount || isNaN(amount)) throw new PaymentError("Valid amount is required", ERROR_CODES.INVALID_AMOUNT);
+    if (!paymentMethod) throw new PaymentError("Payment method is required", ERROR_CODES.INVALID_DATA);
 
     const order = {
       customer_name: name.trim(),
+      customer_email: email.trim(),
+      customer_phone: phone.trim(),
       table_number: tableNo,
       items: JSON.stringify(cartItems),
       total_price: amount,
-      payment_method: paymentMethod?.toLowerCase() === 'cash' ? 'cash' : 'upi',
+      payment_method: paymentMethod.toLowerCase(),
       status: 'Awaiting Payment',
       created_at: new Date().toISOString(),
-      order_id: `ORDER-${Date.now()}-${tableNo}`
+      order_id: `ORDER-${Date.now()}-${tableNo}`,
+      payment_status: 'pending'
     };
 
     const { data, error } = await supabase
@@ -140,12 +146,20 @@ app.post("/api/orders", async (req, res) => {
     io.to(`table_${tableNo}`).emit("table_order_update", savedOrder);
     io.to("admin_room").emit("admin_order_update", savedOrder);
 
-    res.status(201).json({ ...savedOrder, items });
+    res.status(201).json({ 
+      ...savedOrder, 
+      items,
+      message: "Order created successfully"
+    });
   } catch (err) {
     logger.error("Order error:", err);
-    res.status(500).json({
-      error: "Failed to create order",
-      ...(process.env.NODE_ENV === "development" && { details: err.message })
+    const status = err instanceof PaymentError ? 400 : 500;
+    res.status(status).json({
+      error: err.message,
+      ...(process.env.NODE_ENV === "development" && { 
+        details: err.message,
+        stack: err.stack 
+      })
     });
   }
 });
