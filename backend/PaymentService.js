@@ -1,7 +1,9 @@
-require("dotenv").config();
+const { createClient } = require("@supabase/supabase-js");
 const { Cashfree } = require("cashfree-pg");
 const { PaymentError, ERROR_CODES } = require("./utils/ErrorHandler");
 const logger = require("./utils/logger");
+
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
 class PaymentService {
   constructor() {
@@ -10,7 +12,6 @@ class PaymentService {
         throw new Error("Missing Cashfree credentials");
       }
 
-      // Choose environment
       const env =
         (process.env.CASHFREE_ENV || "TEST").toUpperCase() === "PRODUCTION"
           ? Cashfree.PRODUCTION
@@ -35,15 +36,8 @@ class PaymentService {
     }
   }
 
-  /**  
-   * orderPayload must include:
-   * - order_id, order_amount, order_currency, order_note  
-   * - customer_details: { customer_id, customer_name, customer_email, customer_phone }  
-   * - order_meta: { return_url, notify_url, payment_methods }
-   */
   async createPaymentSession(orderPayload) {
     try {
-      // Ensure required keys exist
       [
         "order_id",
         "order_amount",
@@ -55,7 +49,6 @@ class PaymentService {
         if (!orderPayload[k]) throw new Error(`Missing field: ${k}`);
       });
 
-      // Always enforce payment_methods to 'upi' only
       orderPayload.order_meta.payment_methods = 'upi';
 
       const resp = await this.retryOperation(() =>
@@ -77,6 +70,13 @@ class PaymentService {
     }
   }
 
+  /**
+   * Handle Cashfree Webhook
+   * - Validate Signature
+   * - Parse data
+   * - Update Supabase 'orders'
+   * - Return enriched data for broadcasting
+   */
   async handleWebhook(payload, signature) {
     try {
       if (
@@ -89,12 +89,40 @@ class PaymentService {
         throw new Error("Invalid webhook signature");
       }
 
+      const orderId = payload.order_id;
+      const paymentId = payload.cf_payment_id;
+      const status = payload.order_status;
+      const amount = payload.order_amount;
+      const tableNo = payload.order_note.match(/Table (\d+)/)?.[1] || null;
+
+      // Update order in Supabase
+      const { data, error } = await supabase
+        .from("orders")
+        .update({
+          payment_status: status,
+          status: status === "PAID" ? "Preparing" : "Payment Failed",
+          cf_payment_id: paymentId,
+          updated_at: new Date().toISOString()
+        })
+        .eq("order_id", orderId)
+        .select();
+
+      if (error) throw error;
+
+      logger.info("Order updated from webhook", {
+        orderId,
+        paymentId,
+        status,
+        amount
+      });
+
       return {
-        orderId: payload.order_id,
-        status: payload.order_status,
-        amount: payload.order_amount,
-        paymentId: payload.cf_payment_id,
-        tableNo: payload.order_note.match(/Table (\d+)/)?.[1] || null
+        orderId,
+        status,
+        paymentId,
+        tableNo,
+        amount,
+        order: data[0] || {}
       };
     } catch (err) {
       logger.error("handleWebhook failed", { message: err.message });

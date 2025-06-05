@@ -210,10 +210,11 @@ app.post("/api/payments/initiate", async (req, res) => {
 app.post("/api/payments/webhook", express.raw({ type: 'application/json' }), async (req, res) => {
   try {
     const signature = req.headers['x-cf-signature'];
-    const rawBody = req.body.toString();
-    
-    const result = await PaymentService.handleWebhook(JSON.parse(rawBody), signature);
-    
+    const rawBody = req.body.toString(); // Raw body as string
+    const parsed = JSON.parse(rawBody);
+
+    const result = await PaymentService.handleWebhook(parsed, signature);
+
     // Broadcast payment update
     io.emit("payment_update", result);
     if (result.tableNo) {
@@ -221,15 +222,16 @@ app.post("/api/payments/webhook", express.raw({ type: 'application/json' }), asy
     }
     io.to("admin_room").emit("admin_payment_update", result);
 
-    res.json({ status: 'success' });
+    res.status(200).json({ status: "success" });
   } catch (error) {
     logger.error("Webhook processing failed", error);
     res.status(400).json({
-      error: "Webhook processing failed",
+      error: "Webhook verification or update failed",
       ...(process.env.NODE_ENV === "development" && { details: error.message })
     });
   }
 });
+
 
 // Chat Endpoints
 app.get("/api/chat/messages", async (req, res) => {
