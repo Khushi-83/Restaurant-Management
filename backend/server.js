@@ -2,13 +2,12 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const { createClient } = require("@supabase/supabase-js");
-const { Cashfree } = require("cashfree-pg");
 const http = require("http");
 const { Server } = require("socket.io");
 const helmet = require('helmet');
 const { PaymentError, ERROR_CODES } = require("./utils/ErrorHandler");
 const logger = require("./utils/logger");
-const PaymentService = require('./PaymentService.js'); 
+const paymentRoutes = require('./PaymentRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -164,73 +163,8 @@ app.post("/api/orders", async (req, res) => {
   }
 });
 
-// Payment Endpoints
-app.post("/api/payments/initiate", async (req, res) => {
-  try {
-    const { amount, cartItems, customerDetails } = req.body;
-    const { name: customerName, email: customerEmail, phone: customerPhone, tableNo } = customerDetails || {};
-
-    // Validation
-    if (!amount || isNaN(amount)) throw new PaymentError("Valid amount is required", ERROR_CODES.INVALID_AMOUNT);
-    if (!Array.isArray(cartItems)) throw new PaymentError("Cart items must be an array", ERROR_CODES.INVALID_DATA);
-    if (!customerName || !customerEmail || !customerPhone || !tableNo) {
-      throw new PaymentError("Missing customer details", ERROR_CODES.MISSING_CUSTOMER_DETAILS);
-    }
-
-    const orderPayload = {
-      order_id: `RESTRO-${Date.now()}-${tableNo}`,
-      order_amount: amount,
-      order_currency: "INR",
-      customer_details: {
-        customer_id: `cust-${Date.now()}`,
-        customer_name: customerName,
-        customer_email: customerEmail,
-        customer_phone: customerPhone
-      },
-      order_meta: {
-        return_url: `${process.env.FRONTEND_URL}/payment/success?order_id=${orderPayload.order_id}`,
-        notify_url: `${process.env.BACKEND_URL}/api/payments/webhook`,
-        payment_methods: 'upi,netbanking'
-      }
-    };
-
-    const session = await PaymentService.createPaymentSession(orderPayload);
-    res.json(session);
-  } catch (err) {
-    logger.error("Payment initiation error", err);
-    const status = err instanceof PaymentError ? 400 : 500;
-    res.status(status).json({ 
-      error: err.message,
-      ...(process.env.NODE_ENV === "development" && { stack: err.stack })
-    });
-  }
-});
-
-app.post("/api/payments/webhook", express.raw({ type: 'application/json' }), async (req, res) => {
-  try {
-    const signature = req.headers['x-cf-signature'];
-    const rawBody = req.body.toString(); // Raw body as string
-    const parsed = JSON.parse(rawBody);
-
-    const result = await PaymentService.handleWebhook(parsed, signature);
-
-    // Broadcast payment update
-    io.emit("payment_update", result);
-    if (result.tableNo) {
-      io.to(`table_${result.tableNo}`).emit("table_payment_update", result);
-    }
-    io.to("admin_room").emit("admin_payment_update", result);
-
-    res.status(200).json({ status: "success" });
-  } catch (error) {
-    logger.error("Webhook processing failed", error);
-    res.status(400).json({
-      error: "Webhook verification or update failed",
-      ...(process.env.NODE_ENV === "development" && { details: error.message })
-    });
-  }
-});
-
+// Mount payment routes
+app.use('/api/payments', paymentRoutes);
 
 // Chat Endpoints
 app.get("/api/chat/messages", async (req, res) => {

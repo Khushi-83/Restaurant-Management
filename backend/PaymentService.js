@@ -71,28 +71,17 @@ class PaymentService {
 
   /**
    * Handle Cashfree Webhook
-   * - Validate Signature
    * - Parse data
    * - Update Supabase 'orders'
    * - Return enriched data for broadcasting
    */
-  async handleWebhook(payload, signature) {
+  async handleWebhook(payload) {
     try {
-      if (
-        !Cashfree.WebhookValidator.verify(
-          payload,
-          signature,
-          process.env.CASHFREE_SECRET_KEY
-        )
-      ) {
-        throw new Error("Invalid webhook signature");
-      }
-
       const orderId = payload.order_id;
       const paymentId = payload.cf_payment_id;
       const status = payload.order_status;
       const amount = payload.order_amount;
-      const tableNo = payload.order_note.match(/Table (\d+)/)?.[1] || null;
+      const tableNo = payload.order_note?.match(/Table (\d+)/)?.[1] || null;
 
       // Update order in Supabase
       const { data, error } = await supabase
@@ -128,6 +117,54 @@ class PaymentService {
       throw new PaymentError(
         "Webhook processing failed",
         ERROR_CODES.INVALID_WEBHOOK_SIGNATURE,
+        { originalError: err.message }
+      );
+    }
+  }
+
+  /**
+   * Verify payment status for an order
+   */
+  async verifyPayment(orderId) {
+    try {
+      if (!orderId) {
+        throw new PaymentError(
+          "Order ID is required",
+          ERROR_CODES.INVALID_ORDER_DETAILS
+        );
+      }
+
+      // First check our database
+      const { data: orderData, error: dbError } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("order_id", orderId)
+        .single();
+
+      if (dbError) throw dbError;
+
+      // If payment is already marked as PAID in our database, return that
+      if (orderData.payment_status === "PAID") {
+        return {
+          status: "PAID",
+          order: orderData
+        };
+      }
+
+      // Otherwise verify with Cashfree
+      const resp = await this.retryOperation(() =>
+        this.client.orders.fetch(orderId)
+      );
+
+      return {
+        status: resp.data.order_status,
+        order: orderData
+      };
+    } catch (err) {
+      logger.error("verifyPayment failed", { message: err.message });
+      throw new PaymentError(
+        "Payment verification failed",
+        ERROR_CODES.PAYMENT_VERIFICATION_FAILED,
         { originalError: err.message }
       );
     }

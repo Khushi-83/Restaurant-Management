@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const PaymentService = require('./PaymentService');
-const { PaymentError } = require('./utils/ErrorHandler');
+const { PaymentError, ERROR_CODES } = require('./utils/ErrorHandler');
 const logger = require('./utils/logger');
+const PaymentValidator = require('./utils/PaymentValidator');
 
 // Middleware to handle errors
 const errorHandler = (err, req, res, next) => {
@@ -29,38 +30,63 @@ const errorHandler = (err, req, res, next) => {
 };
 
 // Create payment session
-router.post('/initiate', async (req, res) => {
+router.post("/initiate", async (req, res, next) => {
   try {
-    const { amount, customerDetails, cartItems } = req.body;
-    const { customerName, customerEmail, customerPhone, tableNo } = customerDetails;
+    const { amount, cartItems, customerDetails } = req.body;
+    const { name: customerName, email: customerEmail, phone: customerPhone, tableNo } = customerDetails || {};
 
-    // Validate input
-    if (!amount || !customerDetails || !cartItems || !tableNo) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Missing required fields'
-      });
+    // Validation
+    if (!amount || isNaN(amount)) throw new PaymentError("Valid amount is required", ERROR_CODES.INVALID_AMOUNT);
+    if (!Array.isArray(cartItems)) throw new PaymentError("Cart items must be an array", ERROR_CODES.INVALID_DATA);
+    if (!customerName || !customerEmail || !customerPhone || !tableNo) {
+      throw new PaymentError("Missing customer details", ERROR_CODES.MISSING_CUSTOMER_DETAILS);
     }
 
-    const session = await PaymentService.createPaymentSession({
-      amount,
-      customerName,
-      customerEmail,
-      customerPhone,
-      tableNo,
-      cartItems
-    });
+    const orderPayload = {
+      order_id: `RESTRO-${Date.now()}-${tableNo}`,
+      order_amount: amount,
+      order_currency: "INR",
+      customer_details: {
+        customer_id: `cust-${Date.now()}`,
+        customer_name: customerName,
+        customer_email: customerEmail,
+        customer_phone: customerPhone
+      },
+      order_meta: {
+        return_url: `${process.env.FRONTEND_URL}/payment/success?order_id={order_id}`,
+        notify_url: `${process.env.BACKEND_URL}/api/payments/webhook`,
+        payment_methods: 'upi'
+      }
+    };
 
+    // Validate order payload
+    PaymentValidator.validateOrderPayload(orderPayload);
+
+    const session = await PaymentService.createPaymentSession(orderPayload);
+    res.json(session);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Webhook handler
+router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res, next) => {
+  try {
+    const signature = req.headers['x-cf-signature'];
+    const rawBody = req.body.toString();
+    const parsed = JSON.parse(rawBody);
+
+    // Validate webhook signature
+    PaymentValidator.validateWebhookSignature(rawBody, signature);
+
+    const result = await PaymentService.handleWebhook(parsed, signature);
+    
     res.json({
       status: 'success',
-      data: session
+      data: result
     });
   } catch (error) {
-    console.error('Payment session creation failed:', error);
-    res.status(500).json({
-      status: 'error',
-      message: error.message || 'Failed to create payment session'
-    });
+    next(error);
   }
 });
 
@@ -73,21 +99,6 @@ router.get('/verify/:orderId', async (req, res, next) => {
     res.json({
       status: 'success',
       data: paymentStatus
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Webhook handler
-router.post('/webhook', async (req, res, next) => {
-  try {
-    const signature = req.headers['x-cashfree-signature'];
-    const paymentData = await PaymentService.handleWebhook(req.body, signature);
-    
-    res.json({
-      status: 'success',
-      data: paymentData
     });
   } catch (error) {
     next(error);
