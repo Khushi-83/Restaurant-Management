@@ -1,112 +1,154 @@
-const express = require('express');
-const router = express.Router();
-const PaymentService = require('../PaymentService');
-const { PaymentError, ERROR_CODES } = require('./ErrorHandler');
-const logger = require('./utils/logger');
-const PaymentValidator = require('./utils/PaymentValidator');
+// utils/PaymentValidator.jsAdd commentMore actions
+
 const { Cashfree } = require('cashfree-pg');
+const { PaymentError, ERROR_CODES } = require('./ErrorHandler');
 
-// Middleware to handle errors
-const errorHandler = (err, req, res, next) => {
-  logger.error('Payment error occurred', {
-    error: err.message,
-    code: err.code,
-    details: err.details
-  });
-
-  if (err instanceof PaymentError) {
-    return res.status(400).json({
-      status: 'error',
-      code: err.code,
-      message: err.message,
-      details: err.details
-    });
-  }
-
-  res.status(500).json({
-    status: 'error',
-    code: 'INTERNAL_SERVER_ERROR',
-    message: 'An unexpected error occurred'
-  });
-};
-
-// Create payment session
-router.post("/initiate", async (req, res, next) => {
-  try {
-    const { amount, cartItems, customerDetails } = req.body;
-    const { name: customerName, email: customerEmail, phone: customerPhone, tableNo } = customerDetails || {};
-
-    // Validation
-    if (!amount || isNaN(amount)) throw new PaymentError("Valid amount is required", ERROR_CODES.INVALID_AMOUNT);
-    if (!Array.isArray(cartItems)) throw new PaymentError("Cart items must be an array", ERROR_CODES.INVALID_DATA);
-    if (!customerName || !customerEmail || !customerPhone || !tableNo) {
-      throw new PaymentError("Missing customer details", ERROR_CODES.MISSING_CUSTOMER_DETAILS);
+/**
+ * Validates payment payloads and webhook signatures for Cashfree.
+ */
+class PaymentValidator {
+  static validateAmount(amount) {
+    if (typeof amount !== 'number' || amount <= 0 || isNaN(amount)) {
+      throw new PaymentError(
+        'Invalid payment amount',
+        ERROR_CODES.INVALID_AMOUNT,
+        { amount }
+      );
     }
 
-    const orderPayload = {
-      order_id: `RESTRO-${Date.now()}-${tableNo}`,
-      order_amount: amount,
-      order_currency: "INR",
-      customer_details: {
-        customer_id: `cust-${Date.now()}`,
-        customer_name: customerName,
-        customer_email: customerEmail,
-        customer_phone: customerPhone
-      },
-      order_meta: {
-        return_url: `${process.env.FRONTEND_URL}/payment/success?order_id={order_id}`,
-        notify_url: `${process.env.BACKEND_URL}/api/payments/webhook`,
-        payment_methods: 'upi'
+
+
+
+
+  }
+
+  static validateCustomerDetails(orderPayload) {
+    const cd = orderPayload.customer_details;
+
+    if (!cd || typeof cd !== 'object') {
+      throw new PaymentError(
+        'Missing customer_details object',
+        ERROR_CODES.MISSING_CUSTOMER_DETAILS
+      );
+
+
+
+
+
+
+
+
+
+
+    }
+
+    const { customerName, customerEmail, customerPhone, tableNo } = cd;
+    const missing = [];
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    if (!customerName?.trim()) missing.push('customerName');
+    if (!customerEmail?.trim()) missing.push('customerEmail');
+    if (!customerPhone?.trim()) missing.push('customerPhone');
+    if (!tableNo) missing.push('tableNo');
+
+    if (missing.length) {
+      throw new PaymentError(
+        'Missing required customer_details fields',
+        ERROR_CODES.MISSING_CUSTOMER_DETAILS,
+        { missingFields: missing }
+      );
+    }
+  }
+
+  static validateOrderMeta(orderPayload) {
+    const meta = orderPayload.order_meta;
+
+    if (!meta || typeof meta !== 'object') {
+      throw new PaymentError(
+        'Missing order_meta object',
+        ERROR_CODES.INVALID_DATA
+      );
+    }
+
+    const { return_url, notify_url, payment_methods } = meta;
+    const missing = [];
+
+    if (!return_url) missing.push('return_url');
+    if (!notify_url) missing.push('notify_url');
+
+    if (missing.length) {
+      throw new PaymentError(
+        'Missing required order_meta fields',
+        ERROR_CODES.INVALID_DATA,
+        { missingFields: missing }
+      );
+    }
+
+    if (payment_methods && typeof payment_methods !== 'string') {
+      throw new PaymentError(
+        'payment_methods must be a string',
+        ERROR_CODES.INVALID_DATA
+      );
+    }
+  }
+
+  static validateOrderPayload(orderPayload) {
+    if (!orderPayload || typeof orderPayload !== 'object') {
+      throw new PaymentError(
+        'Invalid or missing order payload',
+        ERROR_CODES.INVALID_ORDER_DETAILS
+      );
+    }
+
+    this.validateAmount(orderPayload.order_amount);
+    this.validateCustomerDetails(orderPayload);
+    this.validateOrderMeta(orderPayload);
+
+
+  }
+
+
+  static validateWebhookSignature(rawBody, signature) {
+    if (!signature) {
+      throw new PaymentError(
+        'Missing webhook signature',
+        ERROR_CODES.INVALID_WEBHOOK_SIGNATURE
+      );
+    }
+
+    try {
+      const verified = Cashfree.WebhookValidator.verify({
+        signature,
+        rawBody,
+      });
+
+      if (!verified) {
+        throw new PaymentError(
+          'Webhook signature verification failed',
+          ERROR_CODES.INVALID_WEBHOOK_SIGNATURE
+        );
       }
-    };
-
-    // Validate order payload
-    PaymentValidator.validateOrderPayload(orderPayload);
-
-    const session = await PaymentService.createPaymentSession(orderPayload);
-    res.json(session);
-  } catch (err) {
-    next(err);
+    } catch (err) {
+      throw new PaymentError(
+        'Webhook signature validation error',
+        ERROR_CODES.INVALID_WEBHOOK_SIGNATURE,
+        { originalError: err.message }
+      );
+    }
   }
-});
+}
 
-// Webhook handler
-router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res, next) => {
-  try {
-    const signature = req.headers['x-cf-signature'];
-    const rawBody = req.body.toString();
-    const parsed = JSON.parse(rawBody);
-
-    // Validate webhook signature
-    PaymentValidator.validateWebhookSignature(rawBody, signature);
-
-    const result = await PaymentService.handleWebhook(parsed, signature);
-    
-    res.json({
-      status: 'success',
-      data: result
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Verify payment status
-router.get('/verify/:orderId', async (req, res, next) => {
-  try {
-    const { orderId } = req.params;
-    const paymentStatus = await PaymentService.verifyPayment(orderId);
-    
-    res.json({
-      status: 'success',
-      data: paymentStatus
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Apply error handler
-router.use(errorHandler);
-
-module.exports = router;
+module.exports = PaymentValidator;
