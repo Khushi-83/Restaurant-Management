@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const PaymentService = require('../PaymentService');
-const { PaymentError, ERROR_CODES } = require('./utils/ErrorHandler');
+const { PaymentError, ERROR_CODES } = require('./ErrorHandler');
 const logger = require('./utils/logger');
 const PaymentValidator = require('./utils/PaymentValidator');
 const { Cashfree } = require('cashfree-pg');
