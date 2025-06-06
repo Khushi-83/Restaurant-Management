@@ -181,7 +181,6 @@ app.post("/api/payments/initiate", async (req, res) => {
       order_id: `RESTRO-${Date.now()}-${tableNo}`,
       order_amount: amount,
       order_currency: "INR",
-      order_note: `Table ${tableNo} - ${customerName}`,
       customer_details: {
         customer_id: `cust-${Date.now()}`,
         customer_name: customerName,
@@ -189,7 +188,7 @@ app.post("/api/payments/initiate", async (req, res) => {
         customer_phone: customerPhone
       },
       order_meta: {
-        return_url: `${process.env.FRONTEND_URL}/payment/success?order_id={order_id}`,
+        return_url: `${process.env.FRONTEND_URL}/payment/success?order_id=${orderPayload.order_id}`,
         notify_url: `${process.env.BACKEND_URL}/api/payments/webhook`,
         payment_methods: 'upi,netbanking'
       }

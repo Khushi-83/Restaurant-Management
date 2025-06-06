@@ -42,7 +42,6 @@ class PaymentService {
         "order_id",
         "order_amount",
         "order_currency",
-        "order_note",
         "customer_details",
         "order_meta"
       ].forEach((k) => {
@@ -52,7 +51,7 @@ class PaymentService {
       orderPayload.order_meta.payment_methods = 'upi';
 
       const resp = await this.retryOperation(() =>
-        this.client.pg.orders.create(orderPayload)
+        this.client.orders.create(orderPayload)
       );
 
       return {
