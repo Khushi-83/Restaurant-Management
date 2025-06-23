@@ -33,26 +33,29 @@ export default function CheckoutButton({
         return;
       }
 
-      // de-dupe table numbers just in case
-      const uniqueCartItems = cartItems.filter((item, idx, arr) =>
-        idx === arr.findIndex((t) => t.tableNo === item.tableNo)
-      );
+      // Generate a simple order ID
+      const orderId = `ORDER-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-      // build the new payload shape
       const payload = {
-        amount,
-        cartItems: uniqueCartItems,
-        customerDetails: {
-          customerName: name,
-          customerEmail: email,
-          customerPhone: phone,
-          tableNo
+        order_id: orderId,
+        order_amount: amount,
+        order_currency: "INR",
+        customer_details: {
+          customer_name: name,
+          customer_email: email,
+          customer_phone: phone,
+          table_number: tableNo
         },
         order_meta: {
-          return_url: `${window.location.origin}/payment/status?order_id={order_id}`,
+          return_url: `${window.location.origin}/payment/status?order_id=${orderId}`,
           notify_url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/payments/webhook`,
           payment_methods: 'upi'
-        }
+        },
+        cart_items: cartItems.map(item => ({
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity
+        }))
       };
 
       const res = await fetch('/api/payments/initiate', {
@@ -68,27 +71,18 @@ export default function CheckoutButton({
 
       const { paymentSessionId } = await res.json();
 
-      if (!paymentSessionId) {
-        throw new Error('No paymentSessionId returned');
-      }
-
       if (!window.Cashfree) {
         throw new Error('Cashfree SDK not loaded');
       }
 
-      // Use Cashfree SDK as per docs
       window.Cashfree.checkout({
         paymentSessionId,
         redirectTarget: '_self',
-        mode: 'production',
+        mode: process.env.NEXT_PUBLIC_CASHFREE_ENV === 'production' ? 'production' : 'sandbox',
       });
     } catch (e: unknown) {
       console.error('Payment initialization error:', e);
-      if (e instanceof Error) {
-        alert(e.message || 'Payment failed');
-      } else {
-        alert('Payment failed');
-      }
+      alert(e instanceof Error ? e.message : 'Payment failed');
     } finally {
       setIsLoading(false);
     }
@@ -99,9 +93,7 @@ export default function CheckoutButton({
       <Script
         src="https://sdk.cashfree.com/js/v3/cashfree.js"
         strategy="lazyOnload"
-        onError={() => {
-          alert('Failed to load Cashfree SDK. Please reload.');
-        }}
+        onError={() => alert('Failed to load Cashfree SDK. Please reload.')}
       />
       <Button
         onClick={initializePayment}

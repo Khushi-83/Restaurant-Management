@@ -50,7 +50,8 @@ router.post("/initiate", async (req, res, next) => {
         customer_id: `cust-${Date.now()}`,
         customer_name: customerName,
         customer_email: customerEmail,
-        customer_phone: customerPhone
+        customer_phone: customerPhone,
+        table_number: tableNo
       },
       order_meta: {
         return_url: `${process.env.FRONTEND_URL}/payment/success?order_id={order_id}`,
