@@ -16,12 +16,7 @@ class PaymentValidator {
       );
     }
 
-
-
-
-
   }
-
   static validateCustomerDetails(orderPayload) {
     const cd = orderPayload.customer_details;
 
@@ -30,35 +25,10 @@ class PaymentValidator {
         'Missing customer_details object',
         ERROR_CODES.MISSING_CUSTOMER_DETAILS
       );
-
-
-
-
-
-
-
-
-
-
     }
 
     const { customerName, customerEmail, customerPhone, tableNo } = cd;
     const missing = [];
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     if (!customerName?.trim()) missing.push('customerName');
     if (!customerEmail?.trim()) missing.push('customerEmail');
     if (!customerPhone?.trim()) missing.push('customerPhone');
@@ -117,10 +87,7 @@ class PaymentValidator {
     this.validateCustomerDetails(orderPayload);
     this.validateOrderMeta(orderPayload);
 
-
   }
-
-
   static validateWebhookSignature(rawBody, signature) {
     if (!signature) {
       throw new PaymentError(
