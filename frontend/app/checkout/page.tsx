@@ -9,7 +9,7 @@ import { Clock } from 'lucide-react';
 export default function Page() {
   const { cart, totalPrice } = useCart();
 
-  const [tableNo, setTableNo] = useState('');
+  const [tableNo, setTableNo] = useState<number | ''>('');
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
@@ -44,12 +44,16 @@ export default function Page() {
                     Table Number *
                   </label>
                   <input
-                    type="text"
+                    type="number"
                     value={tableNo}
-                    onChange={(e) => setTableNo(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setTableNo(value === '' ? '' : Number(value));
+                    }}
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
-                    placeholder="e.g., A12"
+                    placeholder="e.g., 12"
                     required
+                    min="1"
                   />
                 </div>
 
@@ -142,7 +146,7 @@ export default function Page() {
                 name: customerName,
                 email: customerEmail,
                 phone: customerPhone,
-                tableNo: tableNo
+                tableNo: tableNo === '' ? 0 : tableNo
               }}
             />
           </div>
