@@ -1,14 +1,16 @@
 import { NextResponse } from 'next/server';
 import { CartItem } from '@/types/types';
 
+interface CustomerDetails {
+  name: string;
+  email: string;
+  phone: string;
+  tableNo: number;
+}
+
 interface PaymentInitiateRequest {
   amount: number;
-  customerDetails: {
-    name: string;
-    email: string;
-    phone: string;
-    tableNo: number;
-  };
+  customerDetails: CustomerDetails;
   cartItems: CartItem[];
 }
 
@@ -18,7 +20,12 @@ export async function POST(request: Request) {
     const { amount, customerDetails, cartItems } = body;
     const { name, email, phone, tableNo } = customerDetails;
 
-    // Generate a unique order ID
+    // Validate tableNo is a number
+    if (typeof tableNo !== 'number' || isNaN(tableNo)) {
+      throw new Error('Invalid table number format');
+    }
+
+    // Generate order ID
     const orderId = `RESTRO-${Date.now()}-${tableNo}`;
 
     const payload = {
@@ -29,7 +36,7 @@ export async function POST(request: Request) {
         customer_name: name,
         customer_email: email,
         customer_phone: phone,
-        table_number: tableNo
+        table_number: tableNo // Already validated as number
       },
       order_meta: {
         return_url: `${process.env.NEXT_PUBLIC_FRONTEND_URL}/payment/status?order_id=${orderId}`,
@@ -37,6 +44,7 @@ export async function POST(request: Request) {
         payment_methods: 'upi'
       },
       cart_items: cartItems.map(item => ({
+        item_id: item.id,
         name: item.name,
         price: item.price,
         quantity: item.quantity
@@ -47,8 +55,7 @@ export async function POST(request: Request) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        // Add any required authentication headers here
-        // 'Authorization': `Bearer ${process.env.BACKEND_API_KEY}`
+        'Authorization': `Bearer ${process.env.BACKEND_API_KEY}`
       },
       body: JSON.stringify(payload)
     });
@@ -61,9 +68,17 @@ export async function POST(request: Request) {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Payment initiation error:', error);
+    console.error('Payment initiation error:', {
+      error,
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Payment initiation failed' },
+      { 
+        error: 'Payment initiation failed',
+        ...(process.env.NODE_ENV !== 'production' && {
+          details: error instanceof Error ? error.message : undefined
+        })
+      },
       { status: 500 }
     );
   }

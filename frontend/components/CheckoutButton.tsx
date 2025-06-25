@@ -2,18 +2,21 @@
 
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 import Script from 'next/script';
 import { CartItem } from '@/types/types';
+
+interface CustomerDetails {
+  name: string;
+  email: string;
+  phone: string;
+  tableNo: number;
+}
 
 interface CheckoutButtonProps {
   cartItems: CartItem[];
   amount: number;
-  customerDetails: {
-    name: string;
-    email: string;
-    phone: string;
-    tableNo: number;
-  };
+  customerDetails: CustomerDetails;
 }
 
 export default function CheckoutButton({
@@ -26,16 +29,14 @@ export default function CheckoutButton({
   const initializePayment = async () => {
     try {
       setIsLoading(true);
-
       const { name, email, phone, tableNo } = customerDetails;
-      if (!name || !email || !phone || !tableNo) {
-        alert('Please fill in all customer details.');
+      
+      if (!name?.trim() || !email?.trim() || !phone?.trim() || isNaN(tableNo)) {
+        alert('Please fill in all customer details correctly.');
         return;
       }
 
-      // Generate a simple order ID
       const orderId = `RESTRO-${Date.now()}-${tableNo}`;
-
       const payload = {
         order_id: orderId,
         order_amount: amount,
@@ -44,7 +45,7 @@ export default function CheckoutButton({
           customer_name: name,
           customer_email: email,
           customer_phone: phone,
-          table_number: tableNo
+          table_number: Number(tableNo)
         },
         order_meta: {
           return_url: `${window.location.origin}/payment/status?order_id=${orderId}`,
@@ -52,6 +53,7 @@ export default function CheckoutButton({
           payment_methods: 'upi'
         },
         cart_items: cartItems.map(item => ({
+          item_id: item.id,
           name: item.name,
           price: item.price,
           quantity: item.quantity
@@ -64,16 +66,10 @@ export default function CheckoutButton({
         body: JSON.stringify(payload)
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to create payment session');
-      }
-
+      if (!res.ok) throw new Error(await res.text());
+      
       const { paymentSessionId } = await res.json();
-
-      if (!window.Cashfree) {
-        throw new Error('Cashfree SDK not loaded');
-      }
+      if (!window.Cashfree) throw new Error('Cashfree SDK not loaded');
 
       window.Cashfree.checkout({
         paymentSessionId,
@@ -81,7 +77,7 @@ export default function CheckoutButton({
         mode: process.env.NEXT_PUBLIC_CASHFREE_ENV === 'production' ? 'production' : 'sandbox',
       });
     } catch (e: unknown) {
-      console.error('Payment initialization error:', e);
+      console.error('Payment error:', e);
       alert(e instanceof Error ? e.message : 'Payment failed');
     } finally {
       setIsLoading(false);
@@ -100,7 +96,12 @@ export default function CheckoutButton({
         disabled={isLoading}
         className="w-full bg-red-600 hover:bg-red-700 text-white"
       >
-        {isLoading ? 'Processing…' : 'Pay Now'}
+        {isLoading ? (
+          <span className="flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Processing...
+          </span>
+        ) : 'Pay Now'}
       </Button>
     </>
   );
