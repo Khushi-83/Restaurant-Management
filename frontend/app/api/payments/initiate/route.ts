@@ -44,7 +44,6 @@ export async function POST(request: Request) {
         payment_methods: 'upi'
       },
       cart_items: cartItems.map(item => ({
-        item_id: item.id,
         name: item.name,
         price: item.price,
         quantity: item.quantity

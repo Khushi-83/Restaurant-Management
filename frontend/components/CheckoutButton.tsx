@@ -36,7 +36,7 @@ export default function CheckoutButton({
         return;
       }
 
-      const orderId = `RESTRO-${Date.now()}-${tableNo}`;
+      const orderId = `RETRO-${Date.now()}-${tableNo}`;
       const payload = {
         order_id: orderId,
         order_amount: amount,
@@ -53,7 +53,6 @@ export default function CheckoutButton({
           payment_methods: 'upi'
         },
         cart_items: cartItems.map(item => ({
-          item_id: item.id,
           name: item.name,
           price: item.price,
           quantity: item.quantity
