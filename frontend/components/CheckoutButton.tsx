@@ -12,7 +12,7 @@ interface CheckoutButtonProps {
     name: string;
     email: string;
     phone: string;
-    tableNo: string;
+    tableNo: number;
   };
 }
 
@@ -34,7 +34,7 @@ export default function CheckoutButton({
       }
 
       // Generate a simple order ID
-      const orderId = `ORDER-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const orderId = `RESTRO-${Date.now()}-${tableNo}`;
 
       const payload = {
         order_id: orderId,

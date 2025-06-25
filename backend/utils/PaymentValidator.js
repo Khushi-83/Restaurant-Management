@@ -75,6 +75,29 @@ class PaymentValidator {
     }
   }
 
+  static validateCartItem(cart_item) {
+    const { name, price, quantity } = cart_item || {};
+    const missing = [];
+    if (!name) missing.push('name');
+    if (!price) missing.push('price');
+    if (!quantity) missing.push('quantity');
+
+    if (missing.length) {
+      throw new PaymentError(
+        'Missing required cart_items fields',
+        ERROR_CODES.INVALID_DATA,
+        { missingFields: missing }
+      );
+    }
+
+    if (typeof name !== 'string') {
+      throw new PaymentError(
+        'name must be a string',
+        ERROR_CODES.INVALID_DATA
+      );
+    }
+  }
+
   static validateOrderPayload(orderPayload) {
     if (!orderPayload || typeof orderPayload !== 'object') {
       throw new PaymentError(
@@ -86,7 +109,13 @@ class PaymentValidator {
     this.validateAmount(orderPayload.order_amount);
     this.validateCustomerDetails(orderPayload);
     this.validateOrderMeta(orderPayload);
-
+    if (!Array.isArray(orderPayload.cart_items)) {
+      throw new PaymentError(
+        'cart_items must be an array',
+        ERROR_CODES.INVALID_DATA
+      );
+    }
+    orderPayload.cart_items.forEach(this.validateCartItem);
   }
   static validateWebhookSignature(rawBody, signature) {
     if (!signature) {

@@ -7,7 +7,7 @@ interface PaymentInitiateRequest {
     name: string;
     email: string;
     phone: string;
-    tableNo: string;
+    tableNo: number;
   };
   cartItems: CartItem[];
 }
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     const { name, email, phone, tableNo } = customerDetails;
 
     // Generate a unique order ID
-    const orderId = `ORDER-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const orderId = `RESTRO-${Date.now()}-${tableNo}`;
 
     const payload = {
       order_id: orderId,
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
         customer_name: name,
         customer_email: email,
         customer_phone: phone,
-        table_number: tableNo.toString()
+        table_number: tableNo
       },
       order_meta: {
         return_url: `${process.env.NEXT_PUBLIC_FRONTEND_URL}/payment/status?order_id=${orderId}`,
@@ -37,7 +37,6 @@ export async function POST(request: Request) {
         payment_methods: 'upi'
       },
       cart_items: cartItems.map(item => ({
-        item_id: item.id,
         name: item.name,
         price: item.price,
         quantity: item.quantity

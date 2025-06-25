@@ -121,9 +121,9 @@ app.post("/api/orders", async (req, res) => {
       payment_method: paymentMethod.toLowerCase(),
       status: 'Awaiting Payment',
       created_at: new Date().toISOString(),
-      order_id: `ORDER-${Date.now()}-${tableNo}`,
+      order_id: `RETRO-${Date.now()}-${tableNo}`,
       payment_status: 'pending'
-    };
+    }
 
     const { data, error } = await supabase
       .from("orders")

@@ -16,7 +16,7 @@ class PaymentService {
         (process.env.CASHFREE_ENV || "TEST").toUpperCase() === "PRODUCTION"
           ? Cashfree.PRODUCTION
           : Cashfree.SANDBOX;
-
+ 
       this.client = new Cashfree(
         env,
         process.env.CASHFREE_APP_ID,
@@ -48,7 +48,6 @@ class PaymentService {
         if (!orderPayload[k]) throw new Error(`Missing field: ${k}`);
       });
 
-      orderPayload.order_meta.payment_methods = 'upi';
 
       const resp = await this.retryOperation(() =>
         this.client.orders.create(orderPayload)
@@ -81,8 +80,10 @@ class PaymentService {
       const paymentId = payload.cf_payment_id;
       const status = payload.order_status;
       const amount = payload.order_amount;
-      const tableNo = payload.order_note?.match(/Table (\d+)/)?.[1] || null;
-
+      const [prefix, timestamp, tableNo] = orderId.split('-');
+      if (prefix !== 'RETRO') {
+        throw new PaymentError("Invalid order ID format", ERROR_CODES.INVALID_ORDER_DETAILS);
+      }
       // Update order in Supabase
       const { data, error } = await supabase
         .from("orders")

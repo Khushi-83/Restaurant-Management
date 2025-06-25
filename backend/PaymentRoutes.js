@@ -43,21 +43,25 @@ router.post("/initiate", async (req, res, next) => {
     }
 
     const orderPayload = {
-      order_id: `RESTRO-${Date.now()}-${tableNo}`,
+      order_id: `RETRO-${Date.now()}-${tableNo}`,
       order_amount: amount,
       order_currency: "INR",
       customer_details: {
-        customer_id: `cust-${Date.now()}`,
         customer_name: customerName,
         customer_email: customerEmail,
         customer_phone: customerPhone,
         table_number: tableNo
       },
       order_meta: {
-        return_url: `${process.env.FRONTEND_URL}/payment/success?order_id={order_id}`,
+        return_url: `${process.env.FRONTEND_URL}/payment/success?order_id=${order_id}`,
         notify_url: `${process.env.BACKEND_URL}/api/payments/webhook`,
         payment_methods: 'upi'
-      }
+      },
+      cart_items: cartItems.map(item => ({
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity
+      }))
     };
 
     // Validate order payload
