@@ -72,7 +72,7 @@ const MenuPanel = () => {
 
   const fetchMenuItems = async () => {
     try {
-      const response = await fetch('/api/fooditems');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/fooditems`);
       if (!response.ok) throw new Error('Failed to fetch menu items');
       const data = await response.json();
       setMenuItems(data);
@@ -100,7 +100,7 @@ const MenuPanel = () => {
         quantity_per_serve: values.quantity_per_serve
       };
 
-      const response = await fetch('/api/fooditems', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/fooditems`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(menuItem)
@@ -125,7 +125,7 @@ const MenuPanel = () => {
 
   const handleDeleteItem = async (id: string) => {
     try {
-      const response = await fetch(`/api/fooditems/${id}`, { 
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/fooditems/${id}`, { 
         method: 'DELETE'
       });
 
@@ -312,7 +312,7 @@ const MessagesPanel = () => {
     });
 
     // Fetch existing messages
-    fetch('/api/chat/messages')
+    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/chat/messages`)
       .then(res => res.json())
       .then(data => setMessages(data))
       .catch(error => console.error('Error fetching messages:', error));
@@ -418,7 +418,7 @@ const OrdersPanel = () => {
   
   useEffect(() => {
     // Fetch orders
-    fetch('/api/orders')
+    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/orders`)
       .then(res => res.json())
       .then(data => setOrders(data))
       .catch(() => message.error('Failed to fetch orders'));

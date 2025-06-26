@@ -30,7 +30,7 @@ export default function MenuPanel() {
   const fetchMenuItems = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/food-items');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/food-items`);
       if (!response.ok) throw new Error('Failed to fetch menu items');
       const items = await response.json();
       setData(items.map((item: MenuItem) => ({ ...item, key: item.id })));
@@ -62,7 +62,7 @@ export default function MenuPanel() {
         setEditingKey('');
 
         // Update in backend
-        const response = await fetch(`/api/food-items/${key}`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/food-items/${key}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updatedItem),
@@ -79,7 +79,7 @@ export default function MenuPanel() {
 
   const handleDelete = async (key: string) => {
     try {
-      const response = await fetch(`/api/food-items/${key}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/food-items/${key}`, {
         method: 'DELETE',
       });
 
