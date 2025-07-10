@@ -58,6 +58,19 @@ type MenuFormValues = {
   quantity_per_serve: number;
 };
 
+// Add Feedback type
+type Feedback = {
+  id?: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  diningOption: string;
+  ratings: Record<string, string>;
+  comments: string;
+  created_at?: string;
+};
+
 // MenuPanel component with CRUD operations
 const MenuPanel = () => {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -443,14 +456,50 @@ const PreferencesPanel = () => (
   </div>
 );
 
-const FeedbackPanel = () => (
-  <div className="space-y-4">
-    <h2 className="text-2xl font-bold mb-6">Customer Feedback</h2>
-    <Card className="shadow-sm">
-      <p className="text-gray-600">Feedback management system coming soon...</p>
-    </Card>
-  </div>
-);
+const FeedbackPanel = () => {
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/feedback`)
+      .then(res => res.json())
+      .then(data => setFeedbacks(data))
+      .catch(() => setFeedbacks([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-2xl font-bold mb-6">Customer Feedback</h2>
+      <Card className="shadow-sm">
+        {loading ? (
+          <p>Loading feedback...</p>
+        ) : feedbacks.length === 0 ? (
+          <p className="text-gray-600">No feedback yet.</p>
+        ) : (
+          <List
+            dataSource={feedbacks}
+            renderItem={fb => (
+              <List.Item>
+                <List.Item.Meta
+                  title={`${fb.firstName} ${fb.lastName} (${fb.email})`}
+                  description={
+                    <>
+                      <div><b>Dining Option:</b> {fb.diningOption}</div>
+                      <div><b>Ratings:</b> {fb.ratings && Object.entries(fb.ratings).map(([cat, val]) => `${cat}: ${val}`).join(', ')}</div>
+                      <div><b>Comments:</b> {fb.comments}</div>
+                      <div className="text-xs text-gray-400">{fb.created_at && new Date(fb.created_at).toLocaleString()}</div>
+                    </>
+                  }
+                />
+              </List.Item>
+            )}
+          />
+        )}
+      </Card>
+    </div>
+  );
+};
 
 const ReportsPanel = () => (
   <div className="space-y-4">
@@ -591,12 +640,19 @@ export default function AdminDashboard() {
             </div>
           </Header>
           <Content style={{ margin: '24px', overflow: 'initial' }}>
-            <div style={{ 
-              padding: 24, 
-              background: colorBgContainer,
-              borderRadius: '8px',
-              minHeight: '280px'
-            }}>
+            <div
+              style={{
+                padding: 24,
+                background: colorBgContainer,
+                borderRadius: '8px',
+                minHeight: '280px',
+                /* Dotted background pattern */
+                backgroundImage:
+                  'radial-gradient(circle, #e5e7eb 1px, transparent 1px), radial-gradient(circle, #e5e7eb 1px, transparent 1px)',
+                backgroundSize: '20px 20px',
+                backgroundPosition: '0 0, 10px 10px',
+              }}
+            >
               {renderContent()}
             </div>
           </Content>
