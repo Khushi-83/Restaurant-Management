@@ -29,14 +29,23 @@ supabase
     }
   });
 
-// Configure CORS
+// CORS configuration
+const allowedOrigins = [
+  process.env.FRONTEND_URL, // e.g. https://restaurant-management-pied.vercel.app
+  process.env.ADMIN_URL,    // e.g. https://restaurant-management-pied.vercel.app/admin
+  "http://localhost:3000"  // Always allow local dev
+].filter(Boolean); // Remove undefined
+
 const corsOptions = {
-  origin: process.env.NODE_ENV === "production"
-    ? [
-        process.env.FRONTEND_URL,
-        process.env.ADMIN_URL
-      ]
-    : "http://localhost:3000",
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    } else {
+      return callback(new Error('Not allowed by CORS'), false);
+    }
+  },
   methods: ['GET','POST','PUT','DELETE'],
   credentials: true,
   allowedHeaders: ['Content-Type','Authorization']
