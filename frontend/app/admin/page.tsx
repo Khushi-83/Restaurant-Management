@@ -328,8 +328,8 @@ const MessagesPanel = () => {
       timestamp: new Date().toISOString()
     };
     socket.emit('new_message', reply);
-    setMessages(prev => [...prev, reply]);
     setReplyText('');
+    // Do NOT update setMessages here to avoid duplication
   };
 
   return (

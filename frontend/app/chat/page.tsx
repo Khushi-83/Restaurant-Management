@@ -84,20 +84,12 @@ export default function ChatPage() {
 
   const sendMessage = () => {
     if (!input.trim()) return;
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      from: "user",
-      text: input,
-      timestamp: new Date(),
-      status: "sending"
-    };
-    setMessages(prev => [...prev, newMessage]);
-    setInput("");
-    // Send to backend via socket
     socket.emit("new_message", {
       sender: "User",
-      message: newMessage.text,
+      message: input,
     });
+    setInput("");
+    // Do NOT update setMessages here to avoid duplication
   };
 
   return (
