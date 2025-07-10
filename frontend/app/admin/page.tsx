@@ -27,7 +27,6 @@ type ChatMessage = {
   id?: string;
   sender: string;
   message: string;
-  table_number: string;
   timestamp: string;
 };
 
@@ -304,7 +303,6 @@ const MenuPanel = () => {
 const MessagesPanel = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [replyText, setReplyText] = useState('');
-  const [selectedTable, setSelectedTable] = useState<string | null>(null);
 
   useEffect(() => {
     socket.on('new_message', (msg: ChatMessage) => {
@@ -314,7 +312,7 @@ const MessagesPanel = () => {
     // Fetch existing messages
     fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/chat/messages`)
       .then(res => res.json())
-      .then(data => setMessages(data))
+      .then((data: ChatMessage[]) => setMessages(data))
       .catch(error => console.error('Error fetching messages:', error));
 
     return () => {
@@ -323,16 +321,13 @@ const MessagesPanel = () => {
   }, []);
 
   const handleSendReply = () => {
-    if (!selectedTable || !replyText.trim()) return;
-
+    if (!replyText.trim()) return;
     const reply: ChatMessage = {
       sender: 'Admin',
       message: replyText,
-      table_number: selectedTable,
       timestamp: new Date().toISOString()
     };
-
-    socket.emit('admin_reply', reply);
+    socket.emit('new_message', reply);
     setMessages(prev => [...prev, reply]);
     setReplyText('');
   };
@@ -363,7 +358,7 @@ const MessagesPanel = () => {
                   }
                   title={
                     <div className="flex justify-between">
-                      <span>{msg.sender === 'Admin' ? 'Admin' : `Table ${msg.table_number}`}</span>
+                      <span>{msg.sender}</span>
                       <span className="text-sm text-gray-500">
                         {new Date(msg.timestamp).toLocaleTimeString()}
                       </span>
@@ -375,7 +370,6 @@ const MessagesPanel = () => {
             )}
           />
         </div>
-        
         {/* Reply Input */}
         <div className="mt-4 flex gap-4">
           <Input
@@ -383,25 +377,12 @@ const MessagesPanel = () => {
             value={replyText}
             onChange={(e) => setReplyText(e.target.value)}
             onPressEnter={handleSendReply}
-            prefix={
-              <select 
-                value={selectedTable || ''} 
-                onChange={(e) => setSelectedTable(e.target.value)}
-                className="border-none outline-none bg-transparent mr-2"
-                aria-label="Select table number"
-              >
-                <option value="">Select Table</option>
-                {Array.from({ length: 10 }, (_, i) => i + 1).map(num => (
-                  <option key={num} value={num}>Table {num}</option>
-                ))}
-              </select>
-            }
           />
           <Button 
             type="primary" 
             icon={<SendOutlined />}
             onClick={handleSendReply}
-            disabled={!selectedTable || !replyText.trim()}
+            disabled={!replyText.trim()}
             className="bg-blue-500"
           >
             Send

@@ -6,10 +6,11 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Send, Loader2 } from "lucide-react"
+import { Send } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { format } from "date-fns"
 import { Badge } from "@/components/ui/badge"
+import { socket } from "@/lib/socket";
 
 type Message = {
   id: string;
@@ -19,20 +20,52 @@ type Message = {
   status?: "sending" | "sent" | "seen";
 }
 
+// Replace 'any' with a type for chat messages
+interface ChatMessageFromBackend {
+  id?: string;
+  sender: string;
+  message: string;
+  timestamp: string;
+}
+
 export default function ChatPage() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      from: "admin",
-      text: "👋 Hi there! How can I help you today?",
-      timestamp: new Date(),
-      status: "seen"
-    },
-  ])
-  const [input, setInput] = useState("")
-  const [isTyping, setIsTyping] = useState(false)
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    socket.connect();
+
+    // Fetch existing messages
+    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/chat/messages`)
+      .then(res => res.json())
+      .then((data: ChatMessageFromBackend[]) => {
+        setMessages(data.map((msg) => ({
+          id: msg.id || Date.now().toString(),
+          from: msg.sender === 'Admin' ? 'admin' : 'user',
+          text: msg.message,
+          timestamp: new Date(msg.timestamp),
+          status: 'sent',
+        })));
+      });
+
+    // Listen for new messages
+    socket.on("new_message", (msg: ChatMessageFromBackend) => {
+      setMessages(prev => [...prev, {
+        id: msg.id || Date.now().toString(),
+        from: msg.sender === 'Admin' ? 'admin' : 'user',
+        text: msg.message,
+        timestamp: new Date(msg.timestamp),
+        status: 'sent',
+      }]);
+    });
+
+    return () => {
+      socket.disconnect();
+      socket.off("new_message");
+    };
+  }, []);
 
   // Auto scroll to bottom when new messages arrive
   useEffect(() => {
@@ -40,43 +73,32 @@ export default function ChatPage() {
       scrollRef.current.scrollTo({
         top: scrollRef.current.scrollHeight,
         behavior: "smooth"
-      })
+      });
     }
-  }, [messages])
+  }, [messages]);
 
   // Focus input on mount
   useEffect(() => {
-    inputRef.current?.focus()
-  }, [])
+    inputRef.current?.focus();
+  }, []);
 
   const sendMessage = () => {
-    if (!input.trim()) return
-
+    if (!input.trim()) return;
     const newMessage: Message = {
       id: Date.now().toString(),
       from: "user",
       text: input,
       timestamp: new Date(),
       status: "sending"
-    }
-
-    setMessages(prev => [...prev, newMessage])
-    setInput("")
-
-    // Simulate admin typing
-    setIsTyping(true)
-    setTimeout(() => {
-      setIsTyping(false)
-      const adminReply: Message = {
-        id: (Date.now() + 1).toString(),
-        from: "admin",
-        text: "Thanks for your message! Our team will get back to you shortly.",
-        timestamp: new Date(),
-        status: "sent"
-      }
-      setMessages(prev => [...prev, adminReply])
-    }, 2000)
-  }
+    };
+    setMessages(prev => [...prev, newMessage]);
+    setInput("");
+    // Send to backend via socket
+    socket.emit("new_message", {
+      sender: "User",
+      message: newMessage.text,
+    });
+  };
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
@@ -103,14 +125,15 @@ export default function ChatPage() {
           <div>
             <h2 className="font-serif text-xl text-gray-900">Restaurant Support</h2>
             <p className="text-sm text-gray-500">
-              {isTyping ? (
+              {/* isTyping ? (
                 <span className="flex items-center gap-2 text-red-600">
                   <Loader2 className="h-3 w-3 animate-spin" />
                   Typing...
                 </span>
               ) : (
                 "Usually replies within 5 minutes"
-              )}
+              ) */}
+              `&lsquo;Usually replies within 5 minutes&rsquo;`
             </p>
           </div>
         </div>
@@ -162,7 +185,7 @@ export default function ChatPage() {
                 </div>
               </motion.div>
             ))}
-            {isTyping && (
+            {/* isTyping && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -183,7 +206,7 @@ export default function ChatPage() {
                   </div>
                 </div>
               </motion.div>
-            )}
+            ) */}
           </AnimatePresence>
         </ScrollArea>
 

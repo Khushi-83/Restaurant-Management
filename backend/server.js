@@ -3,7 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const { createClient } = require("@supabase/supabase-js");
 const http = require("http");
-const { Server } = require("socket.io");
+const setupSocketIO = require("./utils/socket");
 const helmet = require('helmet');
 const { PaymentError, ERROR_CODES } = require("./utils/ErrorHandler");
 const logger = require("./utils/logger");
@@ -54,13 +54,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// Socket.IO Configuration
-const io = new Server(server, {
-  cors: corsOptions,
-  transports: ['websocket','polling'],
-  pingTimeout: 60000,
-  pingInterval: 25000
-});
+// Initialize Socket.IO
+const io = setupSocketIO(server, supabase);
 
 const port = process.env.PORT || 5000;
 
@@ -71,7 +66,7 @@ app.get("/", (req, res) => {
     message: "Restaurant Management System API",
     version: "1.0.0",
     environment: process.env.NODE_ENV || "development",
-    websocket: io.engine.clientsCount > 0 ? "active" : "inactive"
+    websocket: io.engine && io.engine.clientsCount > 0 ? "active" : "inactive"
   });
 });
 
@@ -217,48 +212,6 @@ app.post("/api/chat", async (req, res) => {
       ...(process.env.NODE_ENV === "development" && { details: err.message })
     });
   }
-});
-
-// Socket.IO Handlers
-io.on("connection", (socket) => {
-  logger.info(`Client connected: ${socket.id}`);
-  
-  socket.on("join_admin", () => {
-    socket.join("admin_room");
-    logger.info(`Admin dashboard connected: ${socket.id}`);
-  });
-  
-  socket.on("join_table", (tableNo) => {
-    socket.join(`table_${tableNo}`);
-    logger.info(`Socket ${socket.id} joined table ${tableNo}`);
-  });
-
-  socket.on("submit_feedback", async (feedbackData) => {
-    try {
-      const { error } = await supabase
-        .from("feedback")
-        .insert([{
-          ...feedbackData,
-          socket_id: socket.id,
-          created_at: new Date().toISOString()
-        }]);
-
-      if (error) throw error;
-
-      socket.emit("feedback_received");
-      io.to("admin_room").emit("new_feedback", {
-        ...feedbackData,
-        timestamp: new Date().toISOString()
-      });
-    } catch (err) {
-      logger.error("Feedback submission error:", err);
-      socket.emit("feedback_error", { message: "Failed to submit feedback" });
-    }
-  });
-
-  socket.on("disconnect", (reason) => {
-    logger.info(`Client disconnected: ${socket.id}, reason: ${reason}`);
-  });
 });
 
 // Error Handling

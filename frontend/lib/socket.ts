@@ -2,7 +2,7 @@
 import { io } from 'socket.io-client';
 
 const SOCKET_URL = process.env.NODE_ENV === 'production'
-  ? 'http:'
+  ? 'https://restaurant-management-o4sl.onrender.com'
   : 'http://localhost:5000';
 
 export const socket = io(SOCKET_URL, {
