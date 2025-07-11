@@ -82,7 +82,6 @@ export default function FeedbackForm() {
     try {
       const feedbackData = {
         ...formData,
-        date: date?.toISOString(),
         time,
         submitted_at: new Date().toISOString()
       };
