@@ -28,14 +28,14 @@ export default function ChatWindow({ conversation, messages, onSend }: ChatWindo
   return (
     <section className="flex-1 flex flex-col bg-gradient-to-br from-purple-50 to-white">
       <header className="p-4 border-b flex items-center gap-2">
-        <FaUserCircle className="w-8 h-8 text-purple-400" />
+        <FaUserCircle color="#a78bfa" size={32} />
         <span className="font-bold text-lg">{conversation.name}</span>
       </header>
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {conversation.pinned && (
           <div className="flex items-center gap-2 mb-4">
             <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
-              <FaThumbtack /> Pinned Message
+              <FaThumbtack color="#a78bfa" size={18} /> Pinned Message
             </span>
             <span className="text-gray-500 text-xs">{conversation.lastMessage}</span>
           </div>

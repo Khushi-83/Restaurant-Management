@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Conversation } from "./types";
 import { FaThumbtack } from "react-icons/fa";
 
@@ -28,12 +29,12 @@ export default function MessageList({ conversations, selectedId, onSelect }: Mes
               }`}
               onClick={() => onSelect(conv.id)}
             >
-              <img src={conv.avatarUrl || "/default-avatar.png"} alt={conv.name} className="w-10 h-10 rounded-full" />
+              <Image src={conv.avatarUrl || "/default-avatar.png"} alt={conv.name} width={40} height={40} className="w-10 h-10 rounded-full" />
               <div className="flex-1">
                 <div className="font-semibold">{conv.name}</div>
                 <div className="text-xs text-gray-500">{conv.lastMessage}</div>
               </div>
-              <FaThumbtack className="text-purple-400" />
+              <FaThumbtack color="#a78bfa" size={18} />
               {conv.unread > 0 && (
                 <span className="bg-purple-500 text-white text-xs rounded-full px-2 py-0.5 ml-auto">
                   {conv.unread}
@@ -54,7 +55,7 @@ export default function MessageList({ conversations, selectedId, onSelect }: Mes
               }`}
               onClick={() => onSelect(conv.id)}
             >
-              <img src={conv.avatarUrl || "/default-avatar.png"} alt={conv.name} className="w-10 h-10 rounded-full" />
+              <Image src={conv.avatarUrl || "/default-avatar.png"} alt={conv.name} width={40} height={40} className="w-10 h-10 rounded-full" />
               <div className="flex-1">
                 <div className="font-semibold">{conv.name}</div>
                 <div className="text-xs text-gray-500">{conv.lastMessage}</div>

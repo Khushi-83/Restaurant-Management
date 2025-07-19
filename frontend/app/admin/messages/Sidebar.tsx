@@ -18,7 +18,7 @@ export default function Sidebar() {
       <div className="p-6 font-bold text-xl tracking-tight">MyProject</div>
       <nav className="flex-1">
         <ul>
-          {navItems.map((item, idx) => (
+          {navItems.map((item) => (
             <li
               key={item.label}
               className={`flex items-center gap-3 px-6 py-3 cursor-pointer rounded-lg mx-2 my-1 transition-all ${
