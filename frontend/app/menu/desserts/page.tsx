@@ -49,9 +49,8 @@ const Desserts = () => {
   }, []);
 
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold text-center mb-6">Desserts</h1>
-      
+    <div className="p-2 sm:p-6">
+      <h1 className="text-2xl sm:text-3xl font-bold text-center mb-4 sm:mb-6">Desserts</h1>
       {isLoading ? (
         <div className="text-center py-8">
           <p>Loading desserts...</p>
@@ -67,7 +66,7 @@ const Desserts = () => {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-4">
           {desserts.length > 0 ? (
             desserts.map((item) => <FoodCard key={item.id} item={item} />)
           ) : (
@@ -83,9 +82,9 @@ const FoodCard = ({ item }: { item: FoodItem }) => {
   const { addToCart } = useCart();
 
   return (
-    <div className="border p-4 rounded-lg shadow-md w-56 flex flex-col items-center bg-white hover:shadow-lg transition-shadow">
+    <div className="border p-2 sm:p-4 rounded-lg shadow w-full flex flex-col items-center bg-white min-h-[180px] max-w-[160px] mx-auto hover:shadow-lg transition-shadow">
       {/* Image Section */}
-      <div className="w-full h-36 relative mb-3">
+      <div className="w-full h-20 sm:h-36 relative mb-2 sm:mb-3">
         <Image
           src={item.image_url || '/images/default-food.jpg'}
           alt={item.name}
@@ -97,21 +96,18 @@ const FoodCard = ({ item }: { item: FoodItem }) => {
           }}
         />
       </div>
-
       {/* Details Section */}
       <div className="w-full text-center">
-        <h3 className="text-lg font-semibold line-clamp-1">{item.name}</h3>
-        <p className="text-gray-600">₹{item.price.toFixed(2)}</p>
-        <p className="text-gray-500 text-sm">Qty: {item.quantity}</p>
-        
-        {/* Add Button */}
+        <h3 className="text-base sm:text-lg font-semibold line-clamp-1">{item.name}</h3>
+        <p className="text-gray-600 text-sm">₹{item.price.toFixed(2)}</p>
+        <p className="text-gray-500 text-xs sm:text-sm">Qty: {item.quantity}</p>
         <button 
           onClick={() => addToCart({
             ...item,
             id: item.id.toString(),
-            tableNo: "1" // Default table number
+            tableNo: "1"
           })}
-          className="mt-3 w-full bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition disabled:bg-gray-300"
+          className="mt-2 sm:mt-3 w-full bg-blue-500 text-white px-2 py-1 sm:px-4 sm:py-2 rounded-md hover:bg-blue-600 transition text-xs sm:text-base disabled:bg-gray-300"
           disabled={item.quantity <= 0}
         >
           {item.quantity <= 0 ? 'Out of Stock' : 'Add to Cart'}
