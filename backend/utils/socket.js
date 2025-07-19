@@ -44,11 +44,14 @@ function setupSocketIO(server, supabase) {
 
     socket.on("submit_feedback", async (feedbackData) => {
       try {
+        // Remove submitted_at field but keep date
+        const { submitted_at, ...cleanFeedbackData } = feedbackData;
+        
         const { error } = await supabase
           .from("feedback")
           .insert([
             {
-              ...feedbackData,
+              ...cleanFeedbackData,
               socket_id: socket.id,
               created_at: new Date().toISOString(),
             },
@@ -56,7 +59,7 @@ function setupSocketIO(server, supabase) {
         if (error) throw error;
         socket.emit("feedback_received");
         io.to("admin_room").emit("new_feedback", {
-          ...feedbackData,
+          ...cleanFeedbackData,
           timestamp: new Date().toISOString(),
         });
       } catch (err) {

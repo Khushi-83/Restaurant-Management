@@ -18,6 +18,7 @@ export default function FeedbackForm() {
   const [time, setTime] = useState("19:30");
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -80,14 +81,48 @@ export default function FeedbackForm() {
 
   const handleSubmit = async () => {
     try {
+      // Basic validation
+      if (!formData.firstName || !formData.lastName || !formData.email) {
+        toast.error("Please fill in your name and email");
+        return;
+      }
+
+      setIsSubmitting(true);
+      console.log("Form data:", formData);
+      console.log("Socket connected:", socket.connected);
+      
       const feedbackData = {
         ...formData,
+        date: date ? date.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         time,
         submitted_at: new Date().toISOString()
       };
 
-      // Emit feedback data through socket
-      socket.emit("submit_feedback", feedbackData);
+      console.log("Sending feedback data:", feedbackData);
+
+      // Try socket first, then HTTP as fallback
+      if (socket.connected) {
+        socket.emit("submit_feedback", feedbackData);
+        console.log("Feedback sent via socket");
+      } else {
+        // Fallback to HTTP POST
+        const response = await fetch('/api/feedback', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(feedbackData),
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to submit feedback');
+        }
+        
+        console.log("Feedback sent via HTTP");
+      }
+
+      // Show success message
+      toast.success("Submission Successful! Thank you for your feedback.");
 
       // Reset form
       setFormData({
@@ -105,6 +140,8 @@ export default function FeedbackForm() {
     } catch (error) {
       console.error("Error submitting feedback:", error);
       toast.error("Failed to submit feedback. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -139,10 +176,14 @@ export default function FeedbackForm() {
               <div className="flex gap-3">
                 <Input
                   placeholder="First Name"
+                  value={formData.firstName}
+                  onChange={(e) => setFormData({...formData, firstName: e.target.value})}
                   className="bg-white/50 border-gray-200 focus:border-red-500 transition-colors"
                 />
                 <Input
                   placeholder="Last Name"
+                  value={formData.lastName}
+                  onChange={(e) => setFormData({...formData, lastName: e.target.value})}
                   className="bg-white/50 border-gray-200 focus:border-red-500 transition-colors"
                 />
               </div>
@@ -153,6 +194,8 @@ export default function FeedbackForm() {
               <Input
                 type="email"
                 placeholder="example@email.com"
+                value={formData.email}
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
                 className="bg-white/50 border-gray-200 focus:border-red-500 transition-colors"
               />
             </div>
@@ -162,13 +205,20 @@ export default function FeedbackForm() {
               <Input
                 type="tel"
                 placeholder="(000) 000-0000"
+                value={formData.phone}
+                onChange={(e) => setFormData({...formData, phone: e.target.value})}
                 className="bg-white/50 border-gray-200 focus:border-red-500 transition-colors"
               />
             </div>
 
             <div className="space-y-2">
               <Label className="text-gray-700">Dining Option</Label>
-              <ToggleGroup type="single" className="flex gap-3">
+              <ToggleGroup 
+                type="single" 
+                className="flex gap-3"
+                value={formData.diningOption}
+                onValueChange={(value) => setFormData({...formData, diningOption: value})}
+              >
                 <ToggleGroupItem
                   value="dine"
                   className="px-4 py-2 rounded-lg border text-sm bg-white/50 data-[state=on]:bg-red-100 data-[state=on]:border-red-500 transition-all"
@@ -189,10 +239,20 @@ export default function FeedbackForm() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
             <div className="space-y-2">
               <Label className="text-gray-700">Day Visited</Label>
+              {date && (
+                <p className="text-sm text-gray-600 mb-2">
+                  Selected: {date.toLocaleDateString()}
+                </p>
+              )}
               <Calendar
                 mode="single"
                 selected={date}
-                onSelect={setDate}
+                onSelect={(newDate) => {
+                  console.log("Date selected:", newDate);
+                  setDate(newDate);
+                }}
+                disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                initialFocus
                 className="border rounded-lg shadow-sm bg-white"
               />
             </div>
@@ -221,7 +281,15 @@ export default function FeedbackForm() {
             {categories.map((category) => (
               <div key={category} className="space-y-3">
                 <Label className="text-gray-700 font-medium">{category}</Label>
-                <ToggleGroup type="single" className="flex flex-wrap gap-3">
+                <ToggleGroup 
+                  type="single" 
+                  className="flex flex-wrap gap-3"
+                  value={formData.ratings[category]}
+                  onValueChange={(value) => setFormData({
+                    ...formData, 
+                    ratings: {...formData.ratings, [category]: value}
+                  })}
+                >
                   {options.map((opt) => (
                     <ToggleGroupItem
                       key={opt.label}
@@ -243,6 +311,8 @@ export default function FeedbackForm() {
             <Textarea
               placeholder="Share your thoughts with us..."
               rows={4}
+              value={formData.comments}
+              onChange={(e) => setFormData({...formData, comments: e.target.value})}
               className="bg-white/50 border-gray-200 focus:border-red-500 transition-colors"
             />
           </div>
@@ -250,9 +320,10 @@ export default function FeedbackForm() {
           {/* Submit Button */}
           <Button 
             onClick={handleSubmit}
-            className="mt-10 w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-6 text-lg rounded-xl transform transition-all duration-200 hover:scale-[1.02]"
+            disabled={isSubmitting}
+            className="mt-10 w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-6 text-lg rounded-xl transform transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Submit Feedback
+            {isSubmitting ? "Submitting..." : "Submit Feedback"}
             <ChevronRight className="ml-2 h-5 w-5" />
           </Button>
         </CardContent>
