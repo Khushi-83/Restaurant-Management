@@ -440,7 +440,32 @@ const OrdersPanel = () => {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Order cards will be mapped here */}
+          {orders.map(order => (
+            <Card key={order.id} className="shadow-md p-4 flex flex-col gap-2">
+              <div className="flex justify-between items-center mb-2">
+                <span className="font-semibold">Table: {order.table_number}</span>
+                <span className="text-xs text-gray-500">{new Date(order.created_at).toLocaleString()}</span>
+              </div>
+              <div className="mb-2">
+                <span className="font-medium">Status: </span>
+                <span className="capitalize text-blue-600">{order.status}</span>
+              </div>
+              <div>
+                <span className="font-medium">Items:</span>
+                <ul className="list-disc list-inside ml-2">
+                  {order.items.map(item => (
+                    <li key={item.id} className="text-sm">
+                      {item.name} × {item.quantity_per_serve} — ₹{item.price}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="mt-2 flex justify-between items-center">
+                <span className="font-semibold">Total:</span>
+                <span className="text-lg text-red-600 font-bold">₹{order.total_price}</span>
+              </div>
+            </Card>
+          ))}
         </div>
       )}
     </div>
