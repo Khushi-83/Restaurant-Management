@@ -13,7 +13,8 @@ import {
   AudioOutlined,
   SendOutlined,
   DeleteOutlined,
-  EditOutlined
+  EditOutlined,
+  MenuUnfoldOutlined
 } from '@ant-design/icons';
 import { socket } from '@/lib/socket';
 import Image from 'next/image';
@@ -547,6 +548,7 @@ const MusicPanel = () => (
 export default function AdminDashboard() {
   const [collapsed, setCollapsed] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('menu');
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const {
     token: { colorBgContainer },
   } = theme.useToken();
@@ -591,98 +593,117 @@ export default function AdminDashboard() {
 
   return (
     <ConfigProvider>
-      <Layout style={{ minHeight: '100vh' }}>
-        <Sider 
-          collapsible 
-          collapsed={collapsed} 
-          onCollapse={(value: boolean) => setCollapsed(value)}
-          width={250}
-          className="min-h-screen shadow-lg"
-          theme="light"
-        >
-          <div className="h-16 m-4 bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center text-white text-lg font-bold rounded-lg">
-            {collapsed ? 'RMS' : 'Restaurant Admin'}
+      <div className="flex flex-col min-h-screen">
+        <div className="flex flex-1">
+          {/* Sidebar for desktop */}
+          <div className="hidden md:block">
+            <Sider 
+              collapsible 
+              collapsed={collapsed} 
+              onCollapse={(value: boolean) => setCollapsed(value)}
+              width={250}
+              className="min-h-screen shadow-lg"
+              theme="light"
+            >
+              <div className="h-16 m-4 bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center text-white text-lg font-bold rounded-lg">
+                {collapsed ? 'RMS' : 'Restaurant Admin'}
+              </div>
+              <Menu
+                mode="inline"
+                defaultSelectedKeys={['menu']}
+                onSelect={({ key }) => setActiveTab(key)}
+                items={[
+                  { key: 'menu', icon: <AppstoreOutlined />, label: 'Menu Management' },
+                  { key: 'orders', icon: <ShoppingCartOutlined />, label: 'Orders' },
+                  { key: 'messages', icon: <MessageOutlined />, label: 'Customer Messages' },
+                  { key: 'feedback', icon: <StarOutlined />, label: 'Customer Feedback' },
+                  { key: 'preferences', icon: <UserOutlined />, label: 'Customer Preferences' },
+                  { key: 'reports', icon: <PieChartOutlined />, label: 'Daily Reports' },
+                  { key: 'music', icon: <AudioOutlined />, label: 'Song Requests' },
+                  { key: 'settings', icon: <SettingOutlined />, label: 'Settings' },
+                ]}
+                className="border-r-0"
+              />
+            </Sider>
           </div>
-          <Menu
-            mode="inline"
-            defaultSelectedKeys={['menu']}
-            onSelect={({ key }) => setActiveTab(key)}
-            items={[
-              {
-                key: 'menu',
-                icon: <AppstoreOutlined />,
-                label: 'Menu Management',
-              },
-              {
-                key: 'orders',
-                icon: <ShoppingCartOutlined />,
-                label: 'Orders',
-              },
-              {
-                key: 'messages',
-                icon: <MessageOutlined />,
-                label: 'Customer Messages',
-              },
-              {
-                key: 'feedback',
-                icon: <StarOutlined />,
-                label: 'Customer Feedback',
-              },
-              {
-                key: 'preferences',
-                icon: <UserOutlined />,
-                label: 'Customer Preferences',
-              },
-              {
-                key: 'reports',
-                icon: <PieChartOutlined />,
-                label: 'Daily Reports',
-              },
-              {
-                key: 'music',
-                icon: <AudioOutlined />,
-                label: 'Song Requests',
-              },
-              {
-                key: 'settings',
-                icon: <SettingOutlined />,
-                label: 'Settings',
-              },
-            ]}
-            className="border-r-0"
-          />
-        </Sider>
-        <Layout>
-          <Header style={{ padding: '0 24px', background: colorBgContainer }} className="shadow-sm">
-            <div className="flex justify-between items-center h-full">
-              <h1 className="text-xl font-semibold text-gray-800">
-                {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
-              </h1>
-              <div className="flex items-center gap-4">
-                <Avatar icon={<UserOutlined />} />
-                <span className="text-gray-600">Admin</span>
+          {/* Sidebar for mobile */}
+          {mobileSidebarOpen && (
+            <div className="fixed inset-0 z-40 flex md:hidden">
+              <div className="fixed inset-0 bg-black opacity-30" onClick={() => setMobileSidebarOpen(false)} />
+              <div className="relative w-64 bg-white min-h-screen shadow-lg z-50">
+                <Sider
+                  collapsed={false}
+                  width={250}
+                  className="min-h-screen shadow-lg"
+                  theme="light"
+                  style={{ position: 'relative' }}
+                >
+                  <div className="h-16 m-4 bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center text-white text-lg font-bold rounded-lg">
+                    Restaurant Admin
+                  </div>
+                  <Menu
+                    mode="inline"
+                    defaultSelectedKeys={[activeTab]}
+                    onSelect={({ key }) => { setActiveTab(key); setMobileSidebarOpen(false); }}
+                    items={[
+                      { key: 'menu', icon: <AppstoreOutlined />, label: 'Menu Management' },
+                      { key: 'orders', icon: <ShoppingCartOutlined />, label: 'Orders' },
+                      { key: 'messages', icon: <MessageOutlined />, label: 'Customer Messages' },
+                      { key: 'feedback', icon: <StarOutlined />, label: 'Customer Feedback' },
+                      { key: 'preferences', icon: <UserOutlined />, label: 'Customer Preferences' },
+                      { key: 'reports', icon: <PieChartOutlined />, label: 'Daily Reports' },
+                      { key: 'music', icon: <AudioOutlined />, label: 'Song Requests' },
+                      { key: 'settings', icon: <SettingOutlined />, label: 'Settings' },
+                    ]}
+                    className="border-r-0"
+                  />
+                </Sider>
               </div>
             </div>
-          </Header>
-          <Content style={{ margin: '24px', overflow: 'initial' }}>
-            <div
-              style={{
-                padding: 24,
-                background: colorBgContainer,
-                borderRadius: '8px',
-                minHeight: '280px',
-                /* Dotted background pattern */
-                backgroundImage:
-                  'radial-gradient(circle, #e5e7eb 1px, transparent 1px), radial-gradient(circle, #e5e7eb 1px, transparent 1px)',
-                backgroundSize: '20px 20px',
-                backgroundPosition: '0 0, 10px 10px',
-              }}
-            >
-              {renderContent()}
-            </div>
-          </Content>
-        </Layout>
-      </Layout>
+          )}
+          {/* Main content */}
+          <div className="flex-1 flex flex-col min-w-0">
+            <Header style={{ padding: '0 16px', background: colorBgContainer }} className="shadow-sm sticky top-0 z-30">
+              <div className="flex items-center justify-between h-16 w-full">
+                <div className="flex items-center gap-2">
+                  {/* Mobile menu button */}
+                  <button
+                    className="md:hidden p-2 rounded hover:bg-gray-100 focus:outline-none"
+                    onClick={() => setMobileSidebarOpen(true)}
+                    aria-label="Open sidebar"
+                  >
+                    <MenuUnfoldOutlined className="text-xl" />
+                  </button>
+                  <h1 className="text-lg md:text-xl font-semibold text-gray-800 truncate">
+                    {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+                  </h1>
+                </div>
+                <div className="flex items-center gap-2 md:gap-4">
+                  <Avatar icon={<UserOutlined />} />
+                  <span className="hidden sm:inline text-gray-600">Admin</span>
+                </div>
+              </div>
+            </Header>
+            <Content className="flex-1 p-2 sm:p-4 md:p-6 lg:p-8" style={{ overflow: 'auto' }}>
+              <div
+                className="rounded-lg min-h-[280px]"
+                style={{
+                  background: colorBgContainer,
+                  padding: 0,
+                  backgroundImage:
+                    'radial-gradient(circle, #e5e7eb 1px, transparent 1px), radial-gradient(circle, #e5e7eb 1px, transparent 1px)',
+                  backgroundSize: '20px 20px',
+                  backgroundPosition: '0 0, 10px 10px',
+                }}
+              >
+                <div className="p-2 sm:p-4 md:p-6 lg:p-8">
+                  {renderContent()}
+                </div>
+              </div>
+            </Content>
+          </div>
+        </div>
+      </div>
     </ConfigProvider>
   );
 }

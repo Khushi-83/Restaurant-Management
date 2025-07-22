@@ -13,6 +13,7 @@ const FeedbackRoutes = require('./FeedbackRoutes');
 const app = express();
 const server = http.createServer(app);
 
+app.use(express.json());
 // Initialize Supabase
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 

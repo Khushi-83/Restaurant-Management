@@ -33,30 +33,27 @@ export default function CheckoutButton({
       
       if (!name?.trim() || !email?.trim() || !phone?.trim() || isNaN(tableNo)) {
         alert('Please fill in all customer details correctly.');
+        setIsLoading(false);
+        return;
+      }
+      if (!amount || isNaN(amount) || amount <= 0) {
+        alert('Order amount must be greater than zero.');
+        setIsLoading(false);
+        return;
+      }
+      if (!cartItems || cartItems.length === 0) {
+        alert('Your cart is empty.');
+        setIsLoading(false);
         return;
       }
 
-      const orderId = `RETRO-${Date.now()}-${tableNo}`;
+      // Debug log
+      console.log('amount:', amount, 'customerDetails:', customerDetails, 'cartItems:', cartItems);
+
       const payload = {
-        order_id: orderId,
-        order_amount: amount,
-        order_currency: "INR",
-        customer_details: {
-          customer_name: name,
-          customer_email: email,
-          customer_phone: phone,
-          table_number: Number(tableNo)
-        },
-        order_meta: {
-          return_url: `${window.location.origin}/payment/status?order_id=${orderId}`,
-          notify_url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/payments/webhook`,
-          payment_methods: 'upi'
-        },
-        cart_items: cartItems.map(item => ({
-          name: item.name,
-          price: item.price,
-          quantity: item.quantity
-        }))
+        amount,
+        customerDetails,
+        cartItems
       };
 
       const res = await fetch('/api/payments/initiate', {
