@@ -9,6 +9,7 @@ const { PaymentError, ERROR_CODES } = require("./utils/ErrorHandler");
 const logger = require("./utils/logger");
 const paymentRoutes = require('./PaymentRoutes');
 const FeedbackRoutes = require('./FeedbackRoutes');
+const ReportsRoutes = require('./ReportsRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -174,6 +175,9 @@ app.use('/api/payments', paymentRoutes);
 
 // Mount feedback routes
 app.use('/api/feedback', FeedbackRoutes(supabase));
+
+// Mount reports routes
+app.use('/api/reports', ReportsRoutes(supabase));
 
 // Chat Endpoints
 app.get("/api/chat/messages", async (req, res) => {

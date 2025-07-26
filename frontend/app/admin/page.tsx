@@ -527,14 +527,55 @@ const FeedbackPanel = () => {
   );
 };
 
-const ReportsPanel = () => (
-  <div className="space-y-4">
-    <h2 className="text-2xl font-bold mb-6">Daily Reports</h2>
-    <Card className="shadow-sm">
-      <p className="text-gray-600">Analytics and reporting dashboard coming soon...</p>
-    </Card>
-  </div>
-);
+const ReportsPanel = () => {
+  const [sales, setSales] = useState<{ [item: string]: number }>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/reports/daily-sales`)
+      .then(res => res.json())
+      .then(data => {
+        setSales(data);
+        setLoading(false);
+        setError(null);
+      })
+      .catch(() => {
+        setSales({});
+        setLoading(false);
+        setError('Failed to fetch daily sales');
+      });
+  }, []);
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-2xl font-bold mb-6">Daily Reports</h2>
+      <Card className="shadow-sm mb-4">
+        <h3 className="font-semibold mb-2">Sales by Food Item (Today)</h3>
+        {loading ? (
+          <p>Loading sales data...</p>
+        ) : error ? (
+          <p className="text-red-500">{error}</p>
+        ) : Object.keys(sales).length === 0 ? (
+          <p className="text-gray-600">No sales yet today.</p>
+        ) : (
+          <ul>
+            {Object.entries(sales).map(([item, count]) => (
+              <li key={item} className="flex justify-between border-b py-1 last:border-b-0">
+                <span>{item}</span>
+                <span className="font-bold">{count}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+      <Card className="shadow-sm">
+        <p className="text-gray-600">Analytics and reporting dashboard coming soon...</p>
+      </Card>
+    </div>
+  );
+};
 
 const MusicPanel = () => (
   <div className="space-y-4">
