@@ -169,13 +169,9 @@ const MenuPanel = () => {
   };
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Menu Management</h2>
-      </div>
-
+    <div className="space-y-6">
       {/* Add Item Form */}
-      <Card className="mb-6 shadow-sm">
+      <Card className="shadow-sm">
         <Form
           form={form}
           layout="vertical"
@@ -277,7 +273,8 @@ const MenuPanel = () => {
       </Card>
 
       {/* Menu Items Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <Card className="shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {menuItems.map((item) => (
           <Card
             key={item.id}
@@ -321,7 +318,8 @@ const MenuPanel = () => {
             />
           </Card>
         ))}
-      </div>
+        </div>
+      </Card>
     </div>
   );
 };
@@ -360,11 +358,12 @@ const MessagesPanel = () => {
   };
 
   return (
-    <div className="flex h-[calc(100vh-200px)]">
-      {/* Messages List */}
-      <div className="flex-1 flex flex-col">
-        <h2 className="text-2xl font-bold mb-4">Customer Messages</h2>
-        <div className="flex-1 overflow-y-auto bg-gray-50 rounded-lg p-4">
+    <div className="space-y-6">
+      <Card className="shadow-sm">
+        <div className="flex h-[calc(100vh-300px)]">
+          {/* Messages List */}
+          <div className="flex-1 flex flex-col">
+            <div className="flex-1 overflow-y-auto bg-gray-50 rounded-lg p-4">
           <List
             itemLayout="horizontal"
             dataSource={messages}
@@ -416,6 +415,8 @@ const MessagesPanel = () => {
           </Button>
         </div>
       </div>
+        </div>
+      </Card>
     </div>
   );
 };
@@ -526,7 +527,6 @@ const OrdersPanel = () => {
       {/* Header with Statistics */}
       <div className="bg-white rounded-lg shadow-sm p-6">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold text-gray-800">Orders Management</h2>
           <div className="flex gap-2">
             <Button 
               type="primary" 
@@ -735,8 +735,7 @@ const OrdersPanel = () => {
 };
 
 const PreferencesPanel = () => (
-  <div className="space-y-4">
-    <h2 className="text-2xl font-bold mb-6">Customer Preferences</h2>
+  <div className="space-y-6">
     <Card className="shadow-sm">
       <p className="text-gray-600">Customer preferences tracking coming soon...</p>
     </Card>
@@ -756,8 +755,7 @@ const FeedbackPanel = () => {
   }, []);
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-2xl font-bold mb-6">Customer Feedback</h2>
+    <div className="space-y-6">
       <Card className="shadow-sm">
         {loading ? (
           <p>Loading feedback...</p>
@@ -868,8 +866,6 @@ const ReportsPanel = () => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold mb-6">Daily Reports</h2>
-      
       {/* Today's Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="shadow-sm">
@@ -989,8 +985,7 @@ const ReportsPanel = () => {
 };
 
 const MusicPanel = () => (
-  <div className="space-y-4">
-    <h2 className="text-2xl font-bold mb-6">Song Requests</h2>
+  <div className="space-y-6">
     <Card className="shadow-sm">
       <p className="text-gray-600">Music request management coming soon...</p>
     </Card>
@@ -1045,115 +1040,101 @@ export default function AdminDashboard() {
 
   return (
     <ConfigProvider>
-      <div className="flex flex-col min-h-screen">
-        <div className="flex flex-1">
-          {/* Sidebar for desktop */}
-          <div className="hidden md:block">
-            <Sider 
-              collapsible 
-              collapsed={collapsed} 
-              onCollapse={(value: boolean) => setCollapsed(value)}
-              width={250}
-              className="min-h-screen shadow-lg"
-              theme="light"
-            >
-              <div className="h-16 m-4 bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center text-white text-lg font-bold rounded-lg">
-                {collapsed ? 'RMS' : 'Restaurant Admin'}
-              </div>
-              <Menu
-                mode="inline"
-                defaultSelectedKeys={['menu']}
-                onSelect={({ key }) => setActiveTab(key)}
-                items={[
-                  { key: 'menu', icon: <AppstoreOutlined />, label: 'Menu Management' },
-                  { key: 'orders', icon: <ShoppingCartOutlined />, label: 'Orders' },
-                  { key: 'messages', icon: <MessageOutlined />, label: 'Customer Messages' },
-                  { key: 'feedback', icon: <StarOutlined />, label: 'Customer Feedback' },
-                  { key: 'preferences', icon: <UserOutlined />, label: 'Customer Preferences' },
-                  { key: 'reports', icon: <PieChartOutlined />, label: 'Daily Reports' },
-                  { key: 'music', icon: <AudioOutlined />, label: 'Song Requests' },
-                  { key: 'settings', icon: <SettingOutlined />, label: 'Settings' },
-                ]}
-                className="border-r-0"
-              />
-            </Sider>
+      <div className="flex h-screen bg-gray-50">
+        {/* Sidebar for desktop */}
+        <div className="hidden md:block">
+          <Sider 
+            collapsible 
+            collapsed={collapsed} 
+            onCollapse={(value: boolean) => setCollapsed(value)}
+            width={250}
+            className="h-screen shadow-lg"
+            theme="light"
+          >
+            <div className="h-16 m-4 bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center text-white text-lg font-bold rounded-lg">
+              {collapsed ? 'RMS' : 'Restaurant Admin'}
+            </div>
+            <Menu
+              mode="inline"
+              defaultSelectedKeys={['menu']}
+              onSelect={({ key }) => setActiveTab(key)}
+              items={[
+                { key: 'menu', icon: <AppstoreOutlined />, label: 'Menu Management' },
+                { key: 'orders', icon: <ShoppingCartOutlined />, label: 'Orders' },
+                { key: 'messages', icon: <MessageOutlined />, label: 'Customer Messages' },
+                { key: 'feedback', icon: <StarOutlined />, label: 'Customer Feedback' },
+                { key: 'preferences', icon: <UserOutlined />, label: 'Customer Preferences' },
+                { key: 'reports', icon: <PieChartOutlined />, label: 'Daily Reports' },
+                { key: 'music', icon: <AudioOutlined />, label: 'Song Requests' },
+                { key: 'settings', icon: <SettingOutlined />, label: 'Settings' },
+              ]}
+              className="border-r-0"
+            />
+          </Sider>
+        </div>
+        {/* Sidebar for mobile */}
+        {mobileSidebarOpen && (
+          <div className="fixed inset-0 z-40 flex md:hidden">
+            <div className="fixed inset-0 bg-black opacity-30" onClick={() => setMobileSidebarOpen(false)} />
+            <div className="relative w-64 bg-white h-screen shadow-lg z-50">
+              <Sider
+                collapsed={false}
+                width={250}
+                className="h-screen shadow-lg"
+                theme="light"
+                style={{ position: 'relative' }}
+              >
+                <div className="h-16 m-4 bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center text-white text-lg font-bold rounded-lg">
+                  Restaurant Admin
+                </div>
+                <Menu
+                  mode="inline"
+                  defaultSelectedKeys={[activeTab]}
+                  onSelect={({ key }) => { setActiveTab(key); setMobileSidebarOpen(false); }}
+                  items={[
+                    { key: 'menu', icon: <AppstoreOutlined />, label: 'Menu Management' },
+                    { key: 'orders', icon: <ShoppingCartOutlined />, label: 'Orders' },
+                    { key: 'messages', icon: <MessageOutlined />, label: 'Customer Messages' },
+                    { key: 'feedback', icon: <StarOutlined />, label: 'Customer Feedback' },
+                    { key: 'preferences', icon: <UserOutlined />, label: 'Customer Preferences' },
+                    { key: 'reports', icon: <PieChartOutlined />, label: 'Daily Reports' },
+                    { key: 'music', icon: <AudioOutlined />, label: 'Song Requests' },
+                    { key: 'settings', icon: <SettingOutlined />, label: 'Settings' },
+                  ]}
+                  className="border-r-0"
+                />
+              </Sider>
+            </div>
           </div>
-          {/* Sidebar for mobile */}
-          {mobileSidebarOpen && (
-            <div className="fixed inset-0 z-40 flex md:hidden">
-              <div className="fixed inset-0 bg-black opacity-30" onClick={() => setMobileSidebarOpen(false)} />
-              <div className="relative w-64 bg-white min-h-screen shadow-lg z-50">
-                <Sider
-                  collapsed={false}
-                  width={250}
-                  className="min-h-screen shadow-lg"
-                  theme="light"
-                  style={{ position: 'relative' }}
+        )}
+        {/* Main content */}
+        <div className="flex-1 flex flex-col min-w-0">
+          <Header style={{ padding: '0 16px', background: colorBgContainer }} className="shadow-sm z-30">
+            <div className="flex items-center justify-between h-16 w-full">
+              <div className="flex items-center gap-2">
+                {/* Mobile menu button */}
+                <button
+                  className="md:hidden p-2 rounded hover:bg-gray-100 focus:outline-none"
+                  onClick={() => setMobileSidebarOpen(true)}
+                  aria-label="Open sidebar"
                 >
-                  <div className="h-16 m-4 bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center text-white text-lg font-bold rounded-lg">
-                    Restaurant Admin
-                  </div>
-                  <Menu
-                    mode="inline"
-                    defaultSelectedKeys={[activeTab]}
-                    onSelect={({ key }) => { setActiveTab(key); setMobileSidebarOpen(false); }}
-                    items={[
-                      { key: 'menu', icon: <AppstoreOutlined />, label: 'Menu Management' },
-                      { key: 'orders', icon: <ShoppingCartOutlined />, label: 'Orders' },
-                      { key: 'messages', icon: <MessageOutlined />, label: 'Customer Messages' },
-                      { key: 'feedback', icon: <StarOutlined />, label: 'Customer Feedback' },
-                      { key: 'preferences', icon: <UserOutlined />, label: 'Customer Preferences' },
-                      { key: 'reports', icon: <PieChartOutlined />, label: 'Daily Reports' },
-                      { key: 'music', icon: <AudioOutlined />, label: 'Song Requests' },
-                      { key: 'settings', icon: <SettingOutlined />, label: 'Settings' },
-                    ]}
-                    className="border-r-0"
-                  />
-                </Sider>
+                  <MenuUnfoldOutlined className="text-xl" />
+                </button>
+                <h1 className="text-lg md:text-xl font-semibold text-gray-800 truncate">
+                  {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+                </h1>
+              </div>
+              <div className="flex items-center gap-2 md:gap-4">
+                <Avatar icon={<UserOutlined />} />
+                <span className="hidden sm:inline text-gray-600">Admin</span>
               </div>
             </div>
-          )}
-          {/* Main content */}
-          <div className="flex-1 flex flex-col min-w-0">
-            <Header style={{ padding: '0 16px', background: colorBgContainer }} className="shadow-sm sticky top-0 z-30">
-              <div className="flex items-center justify-between h-16 w-full">
-                <div className="flex items-center gap-2">
-                  {/* Mobile menu button */}
-                  <button
-                    className="md:hidden p-2 rounded hover:bg-gray-100 focus:outline-none"
-                    onClick={() => setMobileSidebarOpen(true)}
-                    aria-label="Open sidebar"
-                  >
-                    <MenuUnfoldOutlined className="text-xl" />
-                  </button>
-                  <h1 className="text-lg md:text-xl font-semibold text-gray-800 truncate">
-                    {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
-                  </h1>
-                </div>
-                <div className="flex items-center gap-2 md:gap-4">
-                  <Avatar icon={<UserOutlined />} />
-                  <span className="hidden sm:inline text-gray-600">Admin</span>
-                </div>
-              </div>
-            </Header>
-            <Content className="flex-1 p-2 sm:p-4 md:p-6 lg:p-8" style={{ overflow: 'auto' }}>
-              <div
-                className="rounded-lg min-h-[280px]"
-                style={{
-                  background: colorBgContainer,
-                  padding: 0,
-                  backgroundImage:
-                    'radial-gradient(circle, #e5e7eb 1px, transparent 1px), radial-gradient(circle, #e5e7eb 1px, transparent 1px)',
-                  backgroundSize: '20px 20px',
-                  backgroundPosition: '0 0, 10px 10px',
-                }}
-              >
-                <div className="p-2 sm:p-4 md:p-6 lg:p-8">
-                  {renderContent()}
-                </div>
-              </div>
-            </Content>
-          </div>
+          </Header>
+          <Content className="flex-1 bg-gray-50" style={{ overflow: 'auto' }}>
+            <div className="h-full p-6">
+              {renderContent()}
+            </div>
+          </Content>
         </div>
       </div>
     </ConfigProvider>
