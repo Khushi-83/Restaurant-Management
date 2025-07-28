@@ -10,6 +10,7 @@ const logger = require("./utils/logger");
 const paymentRoutes = require('./PaymentRoutes');
 const FeedbackRoutes = require('./FeedbackRoutes');
 const ReportsRoutes = require('./ReportsRoutes');
+const OrderRoutes = require('./OrderRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -122,7 +123,7 @@ app.post("/api/orders", async (req, res) => {
       customer_name: name.trim(),
       customer_email: email.trim(),
       customer_phone: phone.trim(),
-      table_number: tableNo,
+      table_number: tableNo.toString(),
       items: JSON.stringify(cartItems),
       total_price: amount,
       payment_method: paymentMethod.toLowerCase(),
@@ -178,6 +179,9 @@ app.use('/api/feedback', FeedbackRoutes(supabase));
 
 // Mount reports routes
 app.use('/api/reports', ReportsRoutes(supabase));
+
+// Mount order routes
+app.use('/api/orders', OrderRoutes(supabase, io));
 
 // Chat Endpoints
 app.get("/api/chat/messages", async (req, res) => {

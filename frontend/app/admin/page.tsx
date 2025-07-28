@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Layout, Menu, theme, message, ConfigProvider, List, Avatar, Input, Button, Card, Form, InputNumber, Select } from 'antd';
+import { Layout, Menu, theme, message, ConfigProvider, List, Avatar, Input, Button, Card, Form, InputNumber, Select, Modal } from 'antd';
 import {
   AppstoreOutlined,
   ShoppingCartOutlined,
@@ -14,7 +14,8 @@ import {
   SendOutlined,
   DeleteOutlined,
   EditOutlined,
-  MenuUnfoldOutlined
+  MenuUnfoldOutlined,
+  ReloadOutlined
 } from '@ant-design/icons';
 import { socket } from '@/lib/socket';
 import Image from 'next/image';
@@ -41,12 +42,24 @@ type MenuItem = {
   quantity_per_serve: number;
 };
 
+type OrderItem = {
+  name: string;
+  quantity: number;
+  price: number;
+};
+
 type Order = {
   id: string;
-  table_number: string;
-  items: MenuItem[];
-  status: 'pending' | 'preparing' | 'ready' | 'delivered';
+  order_id: string;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
+  table_number: string | number;
+  items: OrderItem[];
   total_price: number;
+  payment_method: string;
+  payment_status: string;
+  status: 'Awaiting Payment' | 'Preparing' | 'Ready' | 'Delivered' | 'Cancelled';
   created_at: string;
 };
 
@@ -407,63 +420,311 @@ const MessagesPanel = () => {
   );
 };
 
-// OrdersPanel component with better UI
+// OrdersPanel component with enhanced UI for all client orders
 const OrdersPanel = () => {
   const [orders, setOrders] = useState<Order[]>([]);
-  
+  const [loading, setLoading] = useState(false);
+  const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState<string>('');
+
+  const fetchOrders = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/orders`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch orders');
+      }
+      const data = await response.json();
+      setOrders(data);
+    } catch (error) {
+      message.error('Failed to fetch orders');
+      console.error('Error fetching orders:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    // Fetch orders
-    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/orders`)
-      .then(res => res.json())
-      .then(data => setOrders(data))
-      .catch(() => message.error('Failed to fetch orders'));
+    fetchOrders();
   }, []);
 
+  const handleStatusUpdate = async (orderId: string, status: string) => {
+    setUpdatingOrder(orderId);
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/orders/${orderId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update order status');
+      }
+
+      message.success(`Order status updated to ${status}`);
+      fetchOrders(); // Refresh the orders list
+    } catch (error) {
+      message.error('Failed to update order status');
+      console.error('Error updating order status:', error);
+    } finally {
+      setUpdatingOrder(null);
+    }
+  };
+
+  const handleCancelOrder = async (orderId: string) => {
+    Modal.confirm({
+      title: 'Cancel Order',
+      content: 'Are you sure you want to cancel this order?',
+      okText: 'Yes',
+      cancelText: 'No',
+      onOk: async () => {
+        try {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/orders/${orderId}`, {
+            method: 'DELETE',
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to cancel order');
+          }
+
+          message.success('Order cancelled successfully');
+          fetchOrders(); // Refresh the orders list
+        } catch (error) {
+          message.error('Failed to cancel order');
+          console.error('Error cancelling order:', error);
+        }
+      },
+    });
+  };
+
+  // Filter orders based on status and search term
+  const filteredOrders = orders.filter(order => {
+    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+    const matchesSearch = searchTerm === '' || 
+      order.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.order_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.table_number.toString().includes(searchTerm);
+    return matchesStatus && matchesSearch;
+  });
+
+  // Calculate statistics
+  const stats = {
+    total: orders.length,
+    awaitingPayment: orders.filter(o => o.status === 'Awaiting Payment').length,
+    preparing: orders.filter(o => o.status === 'Preparing').length,
+    ready: orders.filter(o => o.status === 'Ready').length,
+    delivered: orders.filter(o => o.status === 'Delivered').length,
+    cancelled: orders.filter(o => o.status === 'Cancelled').length,
+    totalRevenue: orders.reduce((sum, order) => sum + (order.total_price || 0), 0)
+  };
+
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Current Orders</h2>
-        <div className="flex gap-2">
-          <Select defaultValue="all" style={{ width: 120 }}>
+    <div className="space-y-6">
+      {/* Header with Statistics */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold text-gray-800">Orders Management</h2>
+          <div className="flex gap-2">
+            <Button 
+              type="primary" 
+              icon={<ReloadOutlined />}
+              onClick={fetchOrders}
+              loading={loading}
+            >
+              Refresh
+            </Button>
+          </div>
+        </div>
+
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
+          <div className="bg-blue-50 p-4 rounded-lg text-center">
+            <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
+            <div className="text-sm text-blue-600">Total Orders</div>
+          </div>
+          <div className="bg-yellow-50 p-4 rounded-lg text-center">
+            <div className="text-2xl font-bold text-yellow-600">{stats.awaitingPayment}</div>
+            <div className="text-sm text-yellow-600">Awaiting Payment</div>
+          </div>
+          <div className="bg-orange-50 p-4 rounded-lg text-center">
+            <div className="text-2xl font-bold text-orange-600">{stats.preparing}</div>
+            <div className="text-sm text-orange-600">Preparing</div>
+          </div>
+          <div className="bg-blue-50 p-4 rounded-lg text-center">
+            <div className="text-2xl font-bold text-blue-600">{stats.ready}</div>
+            <div className="text-sm text-blue-600">Ready</div>
+          </div>
+          <div className="bg-green-50 p-4 rounded-lg text-center">
+            <div className="text-2xl font-bold text-green-600">{stats.delivered}</div>
+            <div className="text-sm text-green-600">Delivered</div>
+          </div>
+          <div className="bg-purple-50 p-4 rounded-lg text-center">
+            <div className="text-2xl font-bold text-purple-600">₹{stats.totalRevenue.toLocaleString()}</div>
+            <div className="text-sm text-purple-600">Total Revenue</div>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-col md:flex-row gap-4 mb-6">
+          <Input
+            placeholder="Search by customer name, order ID, or table number..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{ maxWidth: 400 }}
+            prefix={<UserOutlined />}
+          />
+          <Select
+            value={statusFilter}
+            onChange={setStatusFilter}
+            style={{ width: 200 }}
+            placeholder="Filter by status"
+          >
             <Select.Option value="all">All Orders</Select.Option>
-            <Select.Option value="pending">Pending</Select.Option>
-            <Select.Option value="preparing">Preparing</Select.Option>
-            <Select.Option value="ready">Ready</Select.Option>
-            <Select.Option value="delivered">Delivered</Select.Option>
+            <Select.Option value="Awaiting Payment">Awaiting Payment</Select.Option>
+            <Select.Option value="Preparing">Preparing</Select.Option>
+            <Select.Option value="Ready">Ready</Select.Option>
+            <Select.Option value="Delivered">Delivered</Select.Option>
+            <Select.Option value="Cancelled">Cancelled</Select.Option>
           </Select>
         </div>
       </div>
 
-      {orders.length === 0 ? (
-        <Card className="text-center py-8">
-          <ShoppingCartOutlined style={{ fontSize: 48 }} className="text-gray-300 mb-4" />
-          <p className="text-gray-600">No active orders at the moment</p>
+      {/* Orders Grid */}
+      {filteredOrders.length === 0 ? (
+        <Card className="text-center py-12">
+          <ShoppingCartOutlined style={{ fontSize: 64 }} className="text-gray-300 mb-4" />
+          <h3 className="text-xl font-semibold text-gray-600 mb-2">
+            {orders.length === 0 ? 'No orders received yet' : 'No orders match your filters'}
+          </h3>
+          <p className="text-gray-500">
+            {orders.length === 0 ? 'Orders from clients will appear here' : 'Try adjusting your search or filter criteria'}
+          </p>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {orders.map(order => (
-            <Card key={order.id} className="shadow-md p-4 flex flex-col gap-2">
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-semibold">Table: {order.table_number}</span>
-                <span className="text-xs text-gray-500">{new Date(order.created_at).toLocaleString()}</span>
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          {filteredOrders.map(order => (
+            <Card 
+              key={order.order_id} 
+              className="shadow-lg hover:shadow-xl transition-shadow duration-300 border-l-4"
+              style={{
+                borderLeftColor: 
+                  order.status === 'Delivered' ? '#10B981' :
+                  order.status === 'Ready' ? '#3B82F6' :
+                  order.status === 'Preparing' ? '#F59E0B' :
+                  order.status === 'Awaiting Payment' ? '#F59E0B' :
+                  '#EF4444'
+              }}
+            >
+              {/* Order Header */}
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-bold text-lg">#{order.order_id}</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      order.status === 'Delivered' ? 'bg-green-100 text-green-800' :
+                      order.status === 'Ready' ? 'bg-blue-100 text-blue-800' :
+                      order.status === 'Preparing' ? 'bg-orange-100 text-orange-800' :
+                      order.status === 'Awaiting Payment' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {order.status}
+                    </span>
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    Table {order.table_number} • {new Date(order.created_at).toLocaleString()}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-green-600">₹{order.total_price}</div>
+                  <div className={`text-xs px-2 py-1 rounded-full ${
+                    order.payment_status === 'PAID' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
+                  }`}>
+                    {order.payment_status}
+                  </div>
+                </div>
               </div>
-              <div className="mb-2">
-                <span className="font-medium">Status: </span>
-                <span className="capitalize text-blue-600">{order.status}</span>
+
+              {/* Customer Info */}
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <UserOutlined className="text-blue-500" />
+                  <span className="font-semibold text-gray-800">{order.customer_name}</span>
+                </div>
+                <div className="text-sm text-gray-600">
+                  📧 {order.customer_email} • 📞 {order.customer_phone}
+                </div>
               </div>
-              <div>
-                <span className="font-medium">Items:</span>
-                <ul className="list-disc list-inside ml-2">
-                  {order.items.map(item => (
-                    <li key={item.id} className="text-sm">
-                      {item.name} × {item.quantity_per_serve} — ₹{item.price}
-                    </li>
+
+              {/* Order Items */}
+              <div className="mb-4">
+                <div className="font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <ShoppingCartOutlined />
+                  Order Items ({order.items?.length || 0})
+                </div>
+                <div className="space-y-2">
+                  {order.items?.map((item: OrderItem, index: number) => (
+                    <div key={index} className="flex justify-between items-center p-2 bg-white rounded border">
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-800">{item.name}</div>
+                        <div className="text-sm text-gray-500">Qty: {item.quantity}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-semibold text-gray-800">₹{item.price}</div>
+                        <div className="text-sm text-gray-500">Total: ₹{item.price * item.quantity}</div>
+                      </div>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
-              <div className="mt-2 flex justify-between items-center">
-                <span className="font-semibold">Total:</span>
-                <span className="text-lg text-red-600 font-bold">₹{order.total_price}</span>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2 flex-wrap">
+                {order.status === 'Awaiting Payment' && (
+                  <Button 
+                    type="primary" 
+                    size="small"
+                    loading={updatingOrder === order.order_id}
+                    onClick={() => handleStatusUpdate(order.order_id, 'Preparing')}
+                    icon={<EditOutlined />}
+                  >
+                    Start Preparing
+                  </Button>
+                )}
+                {order.status === 'Preparing' && (
+                  <Button 
+                    type="primary" 
+                    size="small"
+                    loading={updatingOrder === order.order_id}
+                    onClick={() => handleStatusUpdate(order.order_id, 'Ready')}
+                    icon={<EditOutlined />}
+                  >
+                    Mark Ready
+                  </Button>
+                )}
+                {order.status === 'Ready' && (
+                  <Button 
+                    type="default" 
+                    size="small"
+                    loading={updatingOrder === order.order_id}
+                    onClick={() => handleStatusUpdate(order.order_id, 'Delivered')}
+                    icon={<EditOutlined />}
+                  >
+                    Mark Delivered
+                  </Button>
+                )}
+                {order.status !== 'Delivered' && order.status !== 'Cancelled' && (
+                  <Button 
+                    danger
+                    size="small"
+                    onClick={() => handleCancelOrder(order.order_id)}
+                    icon={<DeleteOutlined />}
+                  >
+                    Cancel Order
+                  </Button>
+                )}
               </div>
             </Card>
           ))}
@@ -529,29 +790,182 @@ const FeedbackPanel = () => {
 
 const ReportsPanel = () => {
   const [sales, setSales] = useState<{ [item: string]: number }>({});
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ordersLoading, setOrdersLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setLoading(true);
-    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/reports/daily-sales`)
-      .then(res => res.json())
-      .then(data => {
-        setSales(data);
-        setLoading(false);
-        setError(null);
-      })
-      .catch(() => {
-        setSales({});
-        setLoading(false);
-        setError('Failed to fetch daily sales');
-      });
+    const fetchData = () => {
+      // Fetch sales data
+      setLoading(true);
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/reports/daily-sales`)
+        .then(res => res.json())
+        .then(data => {
+          setSales(data);
+          setLoading(false);
+          setError(null);
+        })
+        .catch(() => {
+          setSales({});
+          setLoading(false);
+          setError('Failed to fetch daily sales');
+        });
+
+      // Fetch orders data
+      setOrdersLoading(true);
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/orders`)
+        .then(res => res.json())
+        .then(data => {
+          setOrders(data);
+          setOrdersLoading(false);
+        })
+        .catch(() => {
+          setOrders([]);
+          setOrdersLoading(false);
+        });
+    };
+
+    fetchData();
+
+    // Set up real-time updates
+    socket.on('order_update', () => {
+      fetchData(); // Refresh data when new order comes in
+    });
+
+    socket.on('order_status_update', () => {
+      fetchData(); // Refresh data when order status changes
+    });
+
+    // Refresh data every 30 seconds
+    const interval = setInterval(fetchData, 30000);
+
+    return () => {
+      socket.off('order_update');
+      socket.off('order_status_update');
+      clearInterval(interval);
+    };
   }, []);
 
+  // Filter today's orders
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayOrders = orders.filter(order => {
+    const orderDate = new Date(order.created_at);
+    return orderDate >= today;
+  });
+
+  // Calculate today's statistics
+  const todayStats = {
+    totalOrders: todayOrders.length,
+    totalRevenue: todayOrders.reduce((sum, order) => sum + (order.total_price || 0), 0),
+    averageOrder: todayOrders.length > 0 ? todayOrders.reduce((sum, order) => sum + (order.total_price || 0), 0) / todayOrders.length : 0,
+    pendingOrders: todayOrders.filter(order => order.status === 'Awaiting Payment').length,
+    preparingOrders: todayOrders.filter(order => order.status === 'Preparing').length,
+    readyOrders: todayOrders.filter(order => order.status === 'Ready').length,
+    deliveredOrders: todayOrders.filter(order => order.status === 'Delivered').length
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <h2 className="text-2xl font-bold mb-6">Daily Reports</h2>
-      <Card className="shadow-sm mb-4">
+      
+      {/* Today's Statistics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="shadow-sm">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-blue-600">{todayStats.totalOrders}</div>
+            <div className="text-sm text-gray-600">Total Orders</div>
+          </div>
+        </Card>
+        <Card className="shadow-sm">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-green-600">₹{todayStats.totalRevenue.toLocaleString()}</div>
+            <div className="text-sm text-gray-600">Total Revenue</div>
+          </div>
+        </Card>
+        <Card className="shadow-sm">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-orange-600">₹{todayStats.averageOrder.toFixed(0)}</div>
+            <div className="text-sm text-gray-600">Average Order</div>
+          </div>
+        </Card>
+        <Card className="shadow-sm">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-purple-600">{todayStats.pendingOrders + todayStats.preparingOrders}</div>
+            <div className="text-sm text-gray-600">Active Orders</div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Order Status Breakdown */}
+      <Card className="shadow-sm">
+        <h3 className="font-semibold mb-4">Todays Order Status</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="text-center p-3 bg-yellow-50 rounded-lg">
+            <div className="text-lg font-bold text-yellow-600">{todayStats.pendingOrders}</div>
+            <div className="text-sm text-gray-600">Awaiting Payment</div>
+          </div>
+          <div className="text-center p-3 bg-orange-50 rounded-lg">
+            <div className="text-lg font-bold text-orange-600">{todayStats.preparingOrders}</div>
+            <div className="text-sm text-gray-600">Preparing</div>
+          </div>
+          <div className="text-center p-3 bg-blue-50 rounded-lg">
+            <div className="text-lg font-bold text-blue-600">{todayStats.readyOrders}</div>
+            <div className="text-sm text-gray-600">Ready</div>
+          </div>
+          <div className="text-center p-3 bg-green-50 rounded-lg">
+            <div className="text-lg font-bold text-green-600">{todayStats.deliveredOrders}</div>
+            <div className="text-sm text-gray-600">Delivered</div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Recent Orders */}
+      <Card className="shadow-sm">
+        <h3 className="font-semibold mb-4">Recent Orders (Today)</h3>
+        {ordersLoading ? (
+          <p>Loading orders...</p>
+        ) : todayOrders.length === 0 ? (
+          <p className="text-gray-600">No orders today.</p>
+        ) : (
+          <div className="space-y-3">
+            {todayOrders.slice(0, 5).map(order => (
+              <div key={order.order_id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                <div className="flex-1">
+                  <div className="font-medium">Table {order.table_number} - {order.customer_name}</div>
+                  <div className="text-sm text-gray-600">
+                    {order.items?.slice(0, 2).map(item => item.name).join(', ')}
+                    {order.items?.length > 2 && ` +${order.items.length - 2} more`}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {new Date(order.created_at).toLocaleTimeString()}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="font-bold text-green-600">₹{order.total_price}</div>
+                  <div className={`text-xs px-2 py-1 rounded-full ${
+                    order.status === 'Delivered' ? 'bg-green-100 text-green-800' :
+                    order.status === 'Ready' ? 'bg-blue-100 text-blue-800' :
+                    order.status === 'Preparing' ? 'bg-orange-100 text-orange-800' :
+                    'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {order.status}
+                  </div>
+                </div>
+              </div>
+            ))}
+            {todayOrders.length > 5 && (
+              <div className="text-center text-sm text-gray-500">
+                +{todayOrders.length - 5} more orders today
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
+
+      {/* Sales by Food Item */}
+      <Card className="shadow-sm">
         <h3 className="font-semibold mb-2">Sales by Food Item (Today)</h3>
         {loading ? (
           <p>Loading sales data...</p>
@@ -569,9 +983,6 @@ const ReportsPanel = () => {
             ))}
           </ul>
         )}
-      </Card>
-      <Card className="shadow-sm">
-        <p className="text-gray-600">Analytics and reporting dashboard coming soon...</p>
       </Card>
     </div>
   );

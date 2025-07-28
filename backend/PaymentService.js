@@ -89,9 +89,7 @@ class PaymentService {
         .from("orders")
         .update({
           payment_status: status,
-          status: status === "PAID" ? "Preparing" : "Payment Failed",
-          cf_payment_id: paymentId,
-          updated_at: new Date().toISOString()
+          status: status === "PAID" ? "Preparing" : "Payment Failed"
         })
         .eq("order_id", orderId)
         .select();
