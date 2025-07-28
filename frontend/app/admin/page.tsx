@@ -734,13 +734,7 @@ const OrdersPanel = () => {
   );
 };
 
-const PreferencesPanel = () => (
-  <div className="space-y-6">
-    <Card className="shadow-sm">
-      <p className="text-gray-600">Customer preferences tracking coming soon...</p>
-    </Card>
-  </div>
-);
+
 
 const FeedbackPanel = () => {
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
@@ -1028,7 +1022,6 @@ export default function AdminDashboard() {
   const renderContent = () => {
     switch (activeTab) {
       case 'orders': return <OrdersPanel />;
-      case 'preferences': return <PreferencesPanel />;
       case 'menu': return <MenuPanel />;
       case 'feedback': return <FeedbackPanel />;
       case 'reports': return <ReportsPanel />;
@@ -1096,7 +1089,7 @@ export default function AdminDashboard() {
                     { key: 'orders', icon: <ShoppingCartOutlined />, label: 'Orders' },
                     { key: 'messages', icon: <MessageOutlined />, label: 'Customer Messages' },
                     { key: 'feedback', icon: <StarOutlined />, label: 'Customer Feedback' },
-                    { key: 'preferences', icon: <UserOutlined />, label: 'Customer Preferences' },
+                   
                     { key: 'reports', icon: <PieChartOutlined />, label: 'Daily Reports' },
                     { key: 'music', icon: <AudioOutlined />, label: 'Song Requests' },
                     { key: 'settings', icon: <SettingOutlined />, label: 'Settings' },
