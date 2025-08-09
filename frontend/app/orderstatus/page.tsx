@@ -149,63 +149,7 @@ export default function OrderStatusPage() {
     )
   }
 
-  const statusToStepIndex = (status: OrderStatus): number => {
-    switch (status) {
-      case 'Preparing': return 0;
-      case 'Ready': return 1;
-      case 'Delivered': return 2;
-      default: return -1; // Awaiting Payment / Cancelled
-    }
-  }
-
-  const renderStatusStepper = (status: OrderStatus) => {
-    if (status === 'Cancelled') {
-      return (
-        <div className="mt-3 text-sm text-red-700 flex items-center gap-2">
-          <XCircle className="h-4 w-4" /> Order was cancelled
-        </div>
-      )
-    }
-
-    const active = statusToStepIndex(status)
-    const steps: { key: OrderStatus; label: string; Icon: React.ElementType }[] = [
-      { key: 'Preparing', label: 'Preparing', Icon: ChefHat },
-      { key: 'Ready', label: 'Ready', Icon: CheckCircle2 },
-      { key: 'Delivered', label: 'Delivered', Icon: CheckCircle2 },
-    ]
-
-    return (
-      <div className="mt-4">
-        <div className="flex items-center justify-between">
-          {steps.map((s, idx) => {
-            const isActive = active >= idx
-            const isCurrent = active === idx
-            const baseCircle = 'flex items-center justify-center h-8 w-8 rounded-full border text-xs'
-            const activeCls = idx === 0
-              ? 'border-yellow-400 bg-yellow-100 text-yellow-800'
-              : idx === 1
-              ? 'border-blue-400 bg-blue-100 text-blue-800'
-              : 'border-green-400 bg-green-100 text-green-800'
-            const inactiveCls = 'border-gray-300 bg-gray-100 text-gray-500'
-            const circleCls = `${baseCircle} ${isActive ? activeCls : inactiveCls}`
-            return (
-              <div key={s.key} className="flex-1 flex items-center">
-                <div className="flex flex-col items-center min-w-[72px]">
-                  <div className={circleCls} aria-current={isCurrent ? 'step' : undefined}>
-                    <s.Icon className="h-4 w-4" />
-                  </div>
-                  <div className={`mt-1 text-[11px] font-medium ${isActive ? 'text-gray-800' : 'text-gray-400'}`}>{s.label}</div>
-                </div>
-                {idx < steps.length - 1 && (
-                  <div className={`h-0.5 flex-1 mx-2 ${active > idx ? 'bg-green-400' : 'bg-gray-200'}`} />
-                )}
-              </div>
-            )
-          })}
-        </div>
-      </div>
-    )
-  }
+  
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12 px-4 sm:px-6">
