@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from "react";
+import { usePathname } from 'next/navigation';
 import { NavigationMenu, NavigationMenuItem, NavigationMenuList, NavigationMenuLink } from "@/components/ui/navigation-menu";
 import "@/app/globals.css";
 import Link from "next/link";
@@ -11,6 +12,8 @@ import 'antd/dist/reset.css';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
+  const pathname = usePathname();
+  const isChat = pathname === '/chat';
 
   return (
     <CartProvider>
@@ -19,9 +22,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <title>Restaurant Management</title>
           <meta name="viewport" content="width=device-width, initial-scale=1" />
         </head>
-        <body className="min-h-screen flex flex-col bg-gray-100">
+        <body className={`min-h-screen flex flex-col ${isChat ? 'bg-white' : 'bg-gray-100'}`}>
           {/* Navbar */}
-          <header className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-sm shadow-sm">
+          <header className={`fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-sm ${isChat ? 'shadow-none border-b border-gray-200' : 'shadow-sm'}`}>
             <div className="w-full max-w-7xl mx-auto px-6 py-2 flex items-center justify-between">
               {/* Left: Logo */}
               <Link href="/" className="text-xl font-semibold text-red-900 hover:text-red-700 transition-colors">
@@ -49,7 +52,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </header>
 
           {/* Main Content */}
-          <main className="flex-grow pt-[60px]">{children}</main>
+          <main className={`flex-grow pt-[60px] ${isChat ? 'p-0 bg-white' : ''}`}>{children}</main>
 
           {/* Notification System */}
           <NotificationWrapper />
