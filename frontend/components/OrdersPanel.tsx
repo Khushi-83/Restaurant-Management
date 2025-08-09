@@ -2,6 +2,7 @@ import { Table, Tag, Space, Button, message, Modal } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { CheckCircleOutlined, ClockCircleOutlined, ReloadOutlined, ExportOutlined } from '@ant-design/icons';
 import { useState, useEffect } from 'react';
+import { socket } from '@/lib/socket';
 
 interface OrderItem {
   name: string;
@@ -46,6 +47,21 @@ export default function OrdersPanel() {
 
   useEffect(() => {
     fetchOrders();
+
+    // live updates
+    socket.connect();
+    socket.emit('join_admin');
+    const onNewOrder = () => fetchOrders();
+    const onStatus = () => fetchOrders();
+    const onCancelled = () => fetchOrders();
+    socket.on('order_update', onNewOrder);
+    socket.on('order_status_update', onStatus);
+    socket.on('order_cancelled', onCancelled);
+    return () => {
+      socket.off('order_update', onNewOrder);
+      socket.off('order_status_update', onStatus);
+      socket.off('order_cancelled', onCancelled);
+    };
   }, []);
 
   const handleStatusUpdate = async (orderId: string, status: string) => {

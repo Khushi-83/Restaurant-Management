@@ -6,18 +6,41 @@ function setupSocketIO(server, supabase) {
     cors: {
       origin: process.env.NODE_ENV === "production"
         ? [process.env.FRONTEND_URL, process.env.ADMIN_URL]
-        : "http://localhost:3000",
-      methods: ["GET", "POST", "PUT", "DELETE"],
+        : ["http://localhost:3000"],
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
       credentials: true,
       allowedHeaders: ["Content-Type", "Authorization"],
     },
     transports: ["websocket", "polling"],
+    allowEIO3: true,
+    path: '/socket.io',
     pingTimeout: 60000,
     pingInterval: 25000,
   });
 
   io.on("connection", (socket) => {
     logger.info(`Client connected: ${socket.id}`);
+
+    // Room joins for targeted updates
+    socket.on("join_admin", () => {
+      try {
+        socket.join("admin_room");
+        logger.info(`Socket ${socket.id} joined admin_room`);
+      } catch (err) {
+        logger.error("Failed to join admin_room", err);
+      }
+    });
+
+    socket.on("join_table", (tableNumber) => {
+      try {
+        if (!tableNumber) return;
+        const room = `table_${tableNumber}`;
+        socket.join(room);
+        logger.info(`Socket ${socket.id} joined ${room}`);
+      } catch (err) {
+        logger.error("Failed to join table room", err);
+      }
+    });
 
     socket.on("new_message", async (msg) => {
       try {

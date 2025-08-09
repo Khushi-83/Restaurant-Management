@@ -448,6 +448,23 @@ const OrdersPanel = () => {
 
   useEffect(() => {
     fetchOrders();
+
+    // Subscribe to live updates for admin
+    socket.connect();
+    socket.emit('join_admin');
+    const onNewOrder = () => fetchOrders();
+    const onStatus = () => fetchOrders();
+    const onCancelled = () => fetchOrders();
+    socket.on('order_update', onNewOrder);
+    socket.on('admin_order_status_update', onStatus);
+    socket.on('order_status_update', onStatus);
+    socket.on('order_cancelled', onCancelled);
+    return () => {
+      socket.off('order_update', onNewOrder);
+      socket.off('admin_order_status_update', onStatus);
+      socket.off('order_status_update', onStatus);
+      socket.off('order_cancelled', onCancelled);
+    };
   }, []);
 
   const handleStatusUpdate = async (orderId: string, status: string) => {
@@ -998,7 +1015,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     try {
       socket.connect();
-      
+
       // Join admin room for admin-specific messages
       socket.emit('join_admin');
       
@@ -1010,8 +1027,18 @@ export default function AdminDashboard() {
       socket.on('order_update', (order) => {
         message.success(`New order from Table ${order.table_number}`);
       });
+      socket.on('order_status_update', () => {
+        message.info('Order status updated');
+      });
+      socket.on('order_cancelled', () => {
+        message.warning('Order cancelled');
+      });
 
       return () => {
+        socket.off('connect_error');
+        socket.off('order_update');
+        socket.off('order_status_update');
+        socket.off('order_cancelled');
         socket.disconnect();
       };
     } catch (error) {

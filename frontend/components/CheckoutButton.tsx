@@ -65,6 +65,27 @@ export default function CheckoutButton({
 
       if (!res.ok) throw new Error(await res.text());
 
+      // Try to capture created order and persist identifiers for status tracking
+      let responseData: unknown = null;
+      try {
+        responseData = await res.json();
+      } catch {
+        // ignore if response is not JSON
+      }
+
+      if (typeof window !== 'undefined') {
+        try {
+          // Persist table number for order status page
+          window.localStorage.setItem('tableNo', String(tableNo));
+          const maybeOrder = responseData as { order_id?: string } | null;
+          if (maybeOrder && maybeOrder.order_id) {
+            window.localStorage.setItem('lastOrderId', String(maybeOrder.order_id));
+          }
+        } catch {
+          // swallow storage errors
+        }
+      }
+
       alert('Order placed successfully!');
       if (typeof window !== 'undefined') {
         window.location.href = '/orderstatus';
