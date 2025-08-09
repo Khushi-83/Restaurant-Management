@@ -39,19 +39,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
               : i
           )
         : [...prev, { ...item, quantity: 1 }];
-
-      // Remove duplicate table numbers
-      const uniqueCart = newCart.filter((item, index, self) =>
-        index === self.findIndex((t) => (
-          t.tableNo === item.tableNo
-        ))
-      );
       
       showNotification(existing 
         ? `${item.name} quantity updated` 
         : `${item.name} added to cart`);
       
-      return uniqueCart;
+      return newCart;
     });
   };
 
@@ -93,7 +86,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   return (
     <CartContext.Provider value={{
       cart,
-      totalItems: cart.length,
+      totalItems: cart.reduce((count, item) => count + item.quantity, 0),
       totalPrice: cart.reduce((total, item) => total + item.price * item.quantity, 0),
       notification,
       addToCart,

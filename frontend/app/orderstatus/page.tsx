@@ -298,6 +298,12 @@ export default function OrderStatusPage() {
             ))}
           </div>
         )}
+
+        {!loading && !error && orders.length === 0 && currentTable && (
+          <Card className="p-6 border bg-white shadow-sm rounded-2xl text-center text-gray-600">
+            No orders found for table {currentTable} yet.
+          </Card>
+        )}
       </div>
     </div>
   )
