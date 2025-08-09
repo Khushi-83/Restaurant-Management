@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
+import { ChefHat, CheckCircle2, Clock, XCircle } from 'lucide-react'
 import { socket, ensureSocketConnected } from '@/lib/socket'
 
 type OrderStatus = 'Awaiting Payment' | 'Preparing' | 'Ready' | 'Delivered' | 'Cancelled'
@@ -27,112 +28,85 @@ type Order = {
 }
 
 export default function OrderStatusPage() {
-  const [orderIdInput, setOrderIdInput] = useState<string>('')
-  const [currentOrderId, setCurrentOrderId] = useState<string | null>(null)
-  const [order, setOrder] = useState<Order | null>(null)
+  const [tableInput, setTableInput] = useState<string>('')
+  const [currentTable, setCurrentTable] = useState<string | null>(null)
+  const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Prefill from last order if available
+  // Prefill from last table if available
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const last = window.localStorage.getItem('lastOrderId') || ''
-    if (last) {
-      setOrderIdInput(last)
-      setCurrentOrderId(last)
+    const lastTable = window.localStorage.getItem('tableNo') || ''
+    if (lastTable) {
+      setTableInput(lastTable)
+      setCurrentTable(lastTable)
     }
   }, [])
 
-  const fetchOrder = async (orderId: string) => {
+  const fetchOrders = async (tableNumber: string | number) => {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/orders/${orderId}`)
-      if (!res.ok) {
-        throw new Error('Order not found')
-      }
-      const data: Order = await res.json()
-      setOrder(data)
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/orders/table/${tableNumber}`)
+      if (!res.ok) throw new Error('No orders found for this table')
+      const data: Order[] = await res.json()
+      setOrders(Array.isArray(data) ? data : [])
       // Persist for next visit
       if (typeof window !== 'undefined') {
-        try { window.localStorage.setItem('lastOrderId', data.order_id) } catch {}
+        try { window.localStorage.setItem('tableNo', String(tableNumber)) } catch {}
       }
     } catch (e) {
-      setOrder(null)
-      setError(e instanceof Error ? e.message : 'Failed to fetch order')
+      setOrders([])
+      setError(e instanceof Error ? e.message : 'Failed to fetch orders')
     } finally {
       setLoading(false)
     }
   }
 
-  // Fetch when currentOrderId changes
   useEffect(() => {
-    if (!currentOrderId) return
-    fetchOrder(currentOrderId)
-  }, [currentOrderId])
+    if (!currentTable) return
+    fetchOrders(currentTable)
+  }, [currentTable])
 
-  // Register global listeners as soon as we know the target order id
+  // Live updates for a table with reconnect + polling fallback
   useEffect(() => {
-    if (!currentOrderId) return
-    let pollTimer: NodeJS.Timeout | null = null
-    ;(async () => {
-      try {
-        await ensureSocketConnected()
-        const refetch = () => fetchOrder(currentOrderId)
-        const onStatusUpdate = (payload: { orderId?: string; order?: { order_id?: string } }) => {
-          const matches = payload?.orderId === currentOrderId || payload?.order?.order_id === currentOrderId
-          if (matches) refetch()
-        }
-        socket.on('order_status_update', onStatusUpdate)
-        socket.on('order_cancelled', onStatusUpdate)
-        pollTimer = setInterval(refetch, 15000)
-        return () => {
-          socket.off('order_status_update', onStatusUpdate)
-          socket.off('order_cancelled', onStatusUpdate)
-          if (pollTimer) clearInterval(pollTimer)
-        }
-      } catch {
-        // ignore
-      }
-    })()
-  }, [currentOrderId])
-
-  // Live updates via sockets for this order with reconnection + polling fallback
-  useEffect(() => {
-    if (!order || !currentOrderId) return
+    if (!currentTable) return
     let cleanup = () => {}
     let pollTimer: NodeJS.Timeout | null = null
     ;(async () => {
       try {
         await ensureSocketConnected()
-        // Join the table room for targeted updates
-        socket.emit('join_table', order.table_number)
-        const refetch = () => fetchOrder(currentOrderId)
+        socket.emit('join_table', currentTable)
+        const refetch = () => fetchOrders(currentTable)
 
-        const onStatusUpdate = (payload: { orderId?: string; order?: { order_id?: string } }) => {
-          const matches = payload?.orderId === currentOrderId || payload?.order?.order_id === currentOrderId
-          if (matches) refetch()
+        const onTableUpdate = () => {
+          // Any event for this table should trigger refetch
+          refetch()
         }
-        // General and table-scoped events
-        socket.on('order_status_update', onStatusUpdate)
-        socket.on('table_order_status_update', onStatusUpdate)
-        socket.on('order_cancelled', onStatusUpdate)
-        socket.on('table_order_update', () => refetch())
+        socket.on('table_order_update', onTableUpdate)
+        socket.on('table_order_status_update', onTableUpdate)
+        // also listen to global cancel and status updates and refetch
+        const onGlobalStatus = (payload: { order?: { table_number?: string | number } }) => {
+          if (payload?.order?.table_number && String(payload.order.table_number) === String(currentTable)) {
+            refetch()
+          }
+        }
+        socket.on('order_status_update', onGlobalStatus)
+        socket.on('order_cancelled', onGlobalStatus)
 
-        // Re-join on reconnect
-        const onReconnect = () => {
-          socket.emit('join_table', order.table_number)
-        }
+        // re-join on reconnect
+        const onReconnect = () => socket.emit('join_table', currentTable)
         socket.on('connect', onReconnect)
         socket.on('reconnect', onReconnect)
 
         // Polling fallback every 12s
         pollTimer = setInterval(refetch, 12000)
         cleanup = () => {
-          socket.off('order_status_update', onStatusUpdate)
-          socket.off('table_order_status_update', onStatusUpdate)
-          socket.off('order_cancelled', onStatusUpdate)
-          socket.off('table_order_update', refetch)
+          socket.off('table_order_update', onTableUpdate)
+          socket.off('table_order_status_update', onTableUpdate)
+          socket.off('order_status_update', onGlobalStatus)
+          socket.off('order_cancelled', onGlobalStatus)
           socket.off('connect', onReconnect)
           socket.off('reconnect', onReconnect)
           if (pollTimer) clearInterval(pollTimer)
@@ -142,7 +116,7 @@ export default function OrderStatusPage() {
       }
     })()
     return () => cleanup()
-  }, [order, currentOrderId])
+  }, [currentTable])
 
   const getStatusColor = (status: OrderStatus) => {
     switch (status) {
@@ -160,6 +134,78 @@ export default function OrderStatusPage() {
   }
 
   // We render simple badges; no icon helpers needed
+  const renderStatusBadge = (status: OrderStatus) => {
+    const colorClasses = getStatusColor(status)
+    const Icon =
+      status === 'Preparing' ? ChefHat :
+      status === 'Ready' || status === 'Delivered' ? CheckCircle2 :
+      status === 'Cancelled' ? XCircle : Clock
+    return (
+      <span className={`inline-flex items-center gap-1.5 border ${colorClasses} px-2.5 py-1 rounded-full text-xs font-semibold`}
+        aria-label={`Order status: ${status}`}>
+        <Icon className="h-4 w-4" />
+        {status}
+      </span>
+    )
+  }
+
+  const statusToStepIndex = (status: OrderStatus): number => {
+    switch (status) {
+      case 'Preparing': return 0;
+      case 'Ready': return 1;
+      case 'Delivered': return 2;
+      default: return -1; // Awaiting Payment / Cancelled
+    }
+  }
+
+  const renderStatusStepper = (status: OrderStatus) => {
+    if (status === 'Cancelled') {
+      return (
+        <div className="mt-3 text-sm text-red-700 flex items-center gap-2">
+          <XCircle className="h-4 w-4" /> Order was cancelled
+        </div>
+      )
+    }
+
+    const active = statusToStepIndex(status)
+    const steps: { key: OrderStatus; label: string; Icon: React.ElementType }[] = [
+      { key: 'Preparing', label: 'Preparing', Icon: ChefHat },
+      { key: 'Ready', label: 'Ready', Icon: CheckCircle2 },
+      { key: 'Delivered', label: 'Delivered', Icon: CheckCircle2 },
+    ]
+
+    return (
+      <div className="mt-4">
+        <div className="flex items-center justify-between">
+          {steps.map((s, idx) => {
+            const isActive = active >= idx
+            const isCurrent = active === idx
+            const baseCircle = 'flex items-center justify-center h-8 w-8 rounded-full border text-xs'
+            const activeCls = idx === 0
+              ? 'border-yellow-400 bg-yellow-100 text-yellow-800'
+              : idx === 1
+              ? 'border-blue-400 bg-blue-100 text-blue-800'
+              : 'border-green-400 bg-green-100 text-green-800'
+            const inactiveCls = 'border-gray-300 bg-gray-100 text-gray-500'
+            const circleCls = `${baseCircle} ${isActive ? activeCls : inactiveCls}`
+            return (
+              <div key={s.key} className="flex-1 flex items-center">
+                <div className="flex flex-col items-center min-w-[72px]">
+                  <div className={circleCls} aria-current={isCurrent ? 'step' : undefined}>
+                    <s.Icon className="h-4 w-4" />
+                  </div>
+                  <div className={`mt-1 text-[11px] font-medium ${isActive ? 'text-gray-800' : 'text-gray-400'}`}>{s.label}</div>
+                </div>
+                {idx < steps.length - 1 && (
+                  <div className={`h-0.5 flex-1 mx-2 ${active > idx ? 'bg-green-400' : 'bg-gray-200'}`} />
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12 px-4 sm:px-6">
@@ -170,28 +216,30 @@ export default function OrderStatusPage() {
         <h1 className="text-3xl sm:text-4xl font-serif font-semibold text-gray-900 mb-2">
           Order Status
         </h1>
-        <p className="text-gray-600">Enter your Order ID to see live updates</p>
+        <p className="text-gray-600">Enter your Table Number to see live updates</p>
       </div>
 
       <div className="max-w-3xl mx-auto space-y-6">
         <Card className="p-4 bg-white/80">
           <div className="flex gap-3">
             <Input
-              placeholder="Enter Order ID (e.g., RETRO-...-12)"
-              value={orderIdInput}
-              onChange={(e) => setOrderIdInput(e.target.value)}
+              placeholder="Enter Table Number (e.g., 12)"
+              value={tableInput}
+              onChange={(e) => setTableInput(e.target.value)}
+              type="number"
+              min={1}
             />
             <Button
               className="bg-red-600 hover:bg-red-700"
               onClick={() => {
-                if (!orderIdInput.trim()) return
-                setCurrentOrderId(orderIdInput.trim())
+                if (!tableInput.trim()) return
+                setCurrentTable(tableInput.trim())
                 if (typeof window !== 'undefined') {
-                  try { window.localStorage.setItem('lastOrderId', orderIdInput.trim()) } catch {}
+                  try { window.localStorage.setItem('tableNo', tableInput.trim()) } catch {}
                 }
               }}
             >
-              Track
+              Track Table
             </Button>
           </div>
         </Card>
@@ -206,41 +254,49 @@ export default function OrderStatusPage() {
           </Card>
         )}
 
-        {!loading && !error && order && (
-          <motion.div
-            key={order.order_id}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <Card className="p-6 border-2 border-gray-200 bg-white/80 backdrop-blur-sm shadow-xl rounded-2xl">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-bold text-lg">#{order.order_id}</span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-                      {order.status}
-                    </span>
-                  </div>
-                  <div className="text-sm text-gray-600">
-                    Table {order.table_number} • {new Date(order.created_at).toLocaleString()}
-                  </div>
-                </div>
-                <div className="text-right font-bold text-green-600">₹{order.total_price}</div>
-              </div>
-              <div className="space-y-2">
-                {order.items?.map((item, idx) => (
-                  <div key={idx} className="flex justify-between items-center p-2 bg-white rounded border">
-                    <div className="font-medium text-gray-800">{item.name} × {item.quantity}</div>
+        {!loading && !error && orders.length > 0 && (
+          <div className="space-y-4">
+            {orders.flatMap((order) => (order.items || []).map((item, idx) => ({ order, item, key: `${order.order_id}-${idx}` }))).map(({ order, item, key }) => (
+              <motion.div
+                key={key}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Card className="p-6 border border-gray-200 bg-white shadow-lg rounded-2xl">
+                  <div className="flex justify-between items-start">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-gray-900 truncate">{item.name}</span>
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border">#{String(order.order_id)}</span>
+                      </div>
+                      <div className="mt-2 text-sm text-gray-600 flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        <span>Ordered at {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                    </div>
                     <div className="text-right">
-                      <div className="font-semibold text-gray-800">₹{item.price}</div>
-                      <div className="text-sm text-gray-500">Total: ₹{item.price * item.quantity}</div>
+                      <div className="text-xs text-gray-600">Quantity: {item.quantity}</div>
+                      <div className="font-semibold text-gray-900">₹{item.price}</div>
+                      <div className="mt-2">{renderStatusBadge(order.status)}</div>
                     </div>
                   </div>
-                ))}
-              </div>
-            </Card>
-          </motion.div>
+
+                  {order.status === 'Preparing' && (
+                    <div className="mt-4">
+                      <div className="flex items-center gap-2 text-sm text-gray-700 mb-2">
+                        <Clock className="h-4 w-4 text-yellow-600" />
+                        <span>Estimated time: 15-20 minutes</span>
+                      </div>
+                      <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div className="h-2 bg-yellow-500 rounded-full" style={{ width: '60%' }} />
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              </motion.div>
+            ))}
+          </div>
         )}
       </div>
     </div>
