@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { CartItem } from '@/types/types';
+import { useCart } from '@/contexts/cartContext';
+import { useRouter } from 'next/navigation';
 
 interface CustomerDetails {
   name: string;
@@ -24,6 +26,8 @@ export default function CheckoutButton({
   customerDetails
 }: CheckoutButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const { showNotification } = useCart();
+  const router = useRouter();
 
   const placeOrder = async () => {
     try {
@@ -31,17 +35,17 @@ export default function CheckoutButton({
       const { tableNo } = customerDetails;
 
       if (!amount || isNaN(amount) || amount <= 0) {
-        alert('Order amount must be greater than zero.');
+        showNotification('Order amount must be greater than zero.');
         setIsLoading(false);
         return;
       }
       if (!cartItems || cartItems.length === 0) {
-        alert('Your cart is empty.');
+        showNotification('Your cart is empty.');
         setIsLoading(false);
         return;
       }
       if (!tableNo || isNaN(tableNo)) {
-        alert('Please provide a valid table number.');
+        showNotification('Please provide a valid table number.');
         setIsLoading(false);
         return;
       }
@@ -86,13 +90,14 @@ export default function CheckoutButton({
         }
       }
 
-      alert('Order placed successfully!');
-      if (typeof window !== 'undefined') {
-        window.location.href = '/orderstatus';
-      }
+      showNotification('Order placed successfully!');
+      // Navigate after a short delay so the popup is visible
+      setTimeout(() => {
+        router.push('/orderstatus');
+      }, 600);
     } catch (e: unknown) {
       console.error('Order placement error:', e);
-      alert(e instanceof Error ? e.message : 'Failed to place order');
+      showNotification(e instanceof Error ? e.message : 'Failed to place order');
     } finally {
       setIsLoading(false);
     }
