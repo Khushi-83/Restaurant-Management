@@ -18,8 +18,6 @@ interface OrderType {
   table_number: string | number;
   items: OrderItem[];
   total_price: number;
-  payment_method: string;
-  payment_status: string;
   status: string;
   created_at: string;
 }
@@ -143,19 +141,6 @@ export default function OrdersPanel() {
       render: (price: number) => `₹${price}`,
     },
     {
-      title: 'Payment',
-      key: 'payment',
-      width: 120,
-      render: (_, record: OrderType) => (
-        <div>
-          <div style={{ fontSize: '12px' }}>{record.payment_method}</div>
-          <Tag color={record.payment_status === 'PAID' ? 'green' : 'orange'}>
-            {record.payment_status}
-          </Tag>
-        </div>
-      ),
-    },
-    {
       title: 'Status',
       key: 'status',
       dataIndex: 'status',
@@ -169,10 +154,6 @@ export default function OrdersPanel() {
             break;
           case 'Preparing':
             color = 'orange';
-            icon = <ClockCircleOutlined />;
-            break;
-          case 'Awaiting Payment':
-            color = 'blue';
             icon = <ClockCircleOutlined />;
             break;
           case 'Delivered':
@@ -214,16 +195,6 @@ export default function OrdersPanel() {
       width: 200,
       render: (_, record: OrderType) => (
         <Space size="small">
-          {record.status === 'Awaiting Payment' && (
-            <Button 
-              type="primary" 
-              size="small"
-              loading={updatingOrder === record.order_id}
-              onClick={() => handleStatusUpdate(record.order_id, 'Preparing')}
-            >
-              Start Preparing
-            </Button>
-          )}
           {record.status === 'Preparing' && (
             <Button 
               type="primary" 

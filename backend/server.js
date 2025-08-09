@@ -7,7 +7,6 @@ const setupSocketIO = require("./utils/socket");
 const helmet = require('helmet');
 const { PaymentError, ERROR_CODES } = require("./utils/ErrorHandler");
 const logger = require("./utils/logger");
-const paymentRoutes = require('./PaymentRoutes');
 const FeedbackRoutes = require('./FeedbackRoutes');
 const ReportsRoutes = require('./ReportsRoutes');
 const OrderRoutes = require('./OrderRoutes');
@@ -106,32 +105,28 @@ app.get("/api/food-items", async (req, res) => {
 // Orders Endpoint
 app.post("/api/orders", async (req, res) => {
   try {
-    const { customerDetails = {}, cartItems, amount, paymentMethod } = req.body;
+    const { customerDetails = {}, cartItems, amount } = req.body;
     const { name, email, phone, tableNo } = customerDetails;
 
-    // Enhanced Validation
-    if (!name?.trim()) throw new PaymentError("Customer name is required", ERROR_CODES.MISSING_CUSTOMER_DETAILS);
-    if (!email?.trim()) throw new PaymentError("Customer email is required", ERROR_CODES.MISSING_CUSTOMER_DETAILS);
-    if (!phone?.trim()) throw new PaymentError("Customer phone is required", ERROR_CODES.MISSING_CUSTOMER_DETAILS);
+    // Validation (relaxed: only essentials)
     if (!tableNo) throw new PaymentError("Table number is required", ERROR_CODES.MISSING_CUSTOMER_DETAILS);
     if (!Array.isArray(cartItems)) throw new PaymentError("Cart items must be an array", ERROR_CODES.INVALID_DATA);
     if (cartItems.length === 0) throw new PaymentError("Cart cannot be empty", ERROR_CODES.INVALID_DATA);
     if (!amount || isNaN(amount)) throw new PaymentError("Valid amount is required", ERROR_CODES.INVALID_AMOUNT);
-    if (!paymentMethod) throw new PaymentError("Payment method is required", ERROR_CODES.INVALID_DATA);
 
     const order = {
-      customer_name: name.trim(),
-      customer_email: email.trim(),
-      customer_phone: phone.trim(),
+      customer_name: (name || 'Guest').toString().trim(),
+      customer_email: email ? email.toString().trim() : null,
+      customer_phone: phone ? phone.toString().trim() : null,
       table_number: tableNo.toString(),
       items: JSON.stringify(cartItems),
       total_price: amount,
-      payment_method: paymentMethod.toLowerCase(),
-      status: 'Awaiting Payment',
+      payment_method: 'none',
+      status: 'Preparing',
       created_at: new Date().toISOString(),
       order_id: `RETRO-${Date.now()}-${tableNo}`,
-      payment_status: 'pending'
-    }
+      payment_status: 'N/A'
+    };
 
     const { data, error } = await supabase
       .from("orders")
@@ -172,7 +167,7 @@ app.post("/api/orders", async (req, res) => {
 });
 
 // Mount payment routes
-app.use('/api/payments', paymentRoutes);
+
 
 // Mount feedback routes
 app.use('/api/feedback', FeedbackRoutes(supabase));
