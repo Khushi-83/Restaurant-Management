@@ -49,14 +49,18 @@ export default function HomePage() {
             Discover delectable cuisine and unforgettable moments in our welcoming, culinary haven.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4 px-4">
-            <Button size="lg" className="bg-red-600 hover:bg-red-700 transform transition-all duration-300 hover:scale-105 w-full sm:w-auto">
-              Book A Table
-              <ChevronRight className="ml-2 h-4 w-4" />
-            </Button>
-            <Button size="lg" variant="outline" className="text-white border-white hover:bg-white/10 transform transition-all duration-300 hover:scale-105 w-full sm:w-auto">
-              Explore Menu
-              <ChevronRight className="ml-2 h-4 w-4" />
-            </Button>
+            <Link href="/bookings" className="w-full sm:w-auto">
+              <Button size="lg" className="bg-red-600 hover:bg-red-700 transform transition-all duration-300 hover:scale-105 w-full">
+                Book A Table
+                <ChevronRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+            <Link href="#menu" className="w-full sm:w-auto">
+              <Button size="lg" variant="outline" className="text-white border-white hover:bg-white/10 transform transition-all duration-300 hover:scale-105 w-full">
+                Explore Menu
+                <ChevronRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
