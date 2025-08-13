@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseServer } from '@/lib/supabaseServer';
 import { v4 as uuidv4 } from 'uuid';
 
 // Allowed image types
@@ -21,8 +21,19 @@ export async function GET() {
   );
 }
 
+export const runtime = 'nodejs';
+
 export async function POST(request: Request) {
   try {
+    // Environment sanity checks
+    const urlPresent = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const keyPresent = !!(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+    if (!urlPresent || !keyPresent) {
+      return NextResponse.json({
+        error: 'Supabase environment not configured',
+        details: 'Ensure NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (or NEXT_PUBLIC_SUPABASE_ANON_KEY) are set and restart the dev server.'
+      }, { status: 500 });
+    }
     const formData = await request.formData();
     const file = formData.get('file') as File;
 
@@ -51,26 +62,33 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    const fileName = `${uuidv4()}.${fileExtension}`;
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    const fileName = `uploads/${uuidv4()}.${fileExtension}`;
 
-    // First, ensure the bucket exists and is public
-    const { error: bucketError } = await supabase.storage.createBucket('menu-images', {
-      public: true,
-      allowedMimeTypes: ALLOWED_FILE_TYPES,
-      fileSizeLimit: MAX_FILE_SIZE
-    });
+    // Ensure the bucket exists
+    const { data: bucketInfo } = await supabaseServer.storage.getBucket('menu-images');
+    if (!bucketInfo) {
+      // Try to create (requires service role)
+      const { error: bucketError } = await supabaseServer.storage.createBucket('menu-images', {
+        public: true,
+      });
+      if (bucketError && !/already exists/i.test(bucketError.message)) {
+        console.warn('Bucket create warning:', bucketError.message);
+      }
 
-    if (bucketError && bucketError.message !== 'Bucket already exists') {
-      console.error('Bucket creation error:', bucketError);
-      return NextResponse.json({ error: 'Storage configuration error' }, { status: 500 });
+      // Re-check existence
+      const { data: bucketInfoAfter } = await supabaseServer.storage.getBucket('menu-images');
+      if (!bucketInfoAfter) {
+        return NextResponse.json({
+          error: "Storage bucket 'menu-images' not found.",
+          details: "Create the bucket in Supabase Storage and make it Public, or set SUPABASE_SERVICE_ROLE_KEY in your environment so the API can create it automatically."
+        }, { status: 500 });
+      }
     }
 
     // Upload file
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabaseServer.storage
       .from('menu-images')
-      .upload(fileName, buffer, {
+      .upload(fileName, file, {
         contentType: file.type,
         upsert: true,
         cacheControl: '3600'
@@ -80,14 +98,15 @@ export async function POST(request: Request) {
       console.error('Upload error:', uploadError);
       return NextResponse.json({ 
         error: 'Failed to upload image',
-        details: uploadError.message 
+        details: uploadError.message || String(uploadError)
       }, { status: 500 });
     }
 
     // Get the public URL
-    const { data: { publicUrl } } = supabase.storage
+    const { data: publicUrlData } = supabaseServer.storage
       .from('menu-images')
       .getPublicUrl(fileName);
+    const publicUrl = publicUrlData.publicUrl;
 
     return NextResponse.json({ 
       url: publicUrl,

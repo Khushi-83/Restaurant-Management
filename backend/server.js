@@ -10,6 +10,7 @@ const logger = require("./utils/logger");
 const FeedbackRoutes = require('./FeedbackRoutes');
 const ReportsRoutes = require('./ReportsRoutes');
 const OrderRoutes = require('./OrderRoutes');
+const BookingsRoutes = require('./BookingsRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -177,6 +178,9 @@ app.use('/api/reports', ReportsRoutes(supabase));
 
 // Mount order routes
 app.use('/api/orders', OrderRoutes(supabase, io));
+
+// Mount bookings routes
+app.use('/api/bookings', BookingsRoutes(supabase, io));
 
 // Chat Endpoints
 app.get("/api/chat/messages", async (req, res) => {

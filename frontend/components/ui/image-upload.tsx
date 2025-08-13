@@ -27,13 +27,25 @@ export function ImageUpload({ onUploadComplete, onError }: ImageUploadProps) {
         body: formData,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to upload image');
+      // Handle potential non-JSON responses safely
+      type UploadResponse = { url?: string; error?: string };
+      let data: UploadResponse = {};
+      try {
+        data = await response.json();
+      } catch {
+        // ignore
       }
 
-      onUploadComplete(data.url);
+      if (!response.ok) {
+        const detail = (data && ((data as unknown as { details?: string }).details || data.error)) as string | undefined;
+        throw new Error(detail || `Failed to upload image (HTTP ${response.status})`);
+      }
+
+      if (data?.url) {
+        onUploadComplete(data.url);
+      } else {
+        throw new Error('Upload succeeded but no URL returned');
+      }
     } catch (error) {
       console.error('Upload error:', error);
       onError?.(error instanceof Error ? error.message : 'Failed to upload image');

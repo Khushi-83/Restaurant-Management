@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Layout, Menu, theme, message, ConfigProvider, List, Avatar, Input, Button, Card, Form, InputNumber, Select, Modal } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { Layout, Menu, theme, message, ConfigProvider, List, Avatar, Input, Button, Card, Form, InputNumber, Select, Modal, DatePicker, TimePicker, Tag, Table, Space } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
+import dayjs from 'dayjs';
 import {
   AppstoreOutlined,
   ShoppingCartOutlined,
@@ -15,7 +17,8 @@ import {
   DeleteOutlined,
   EditOutlined,
   MenuUnfoldOutlined,
-  ReloadOutlined
+  ReloadOutlined,
+  CalendarOutlined
 } from '@ant-design/icons';
 import { socket } from '@/lib/socket';
 import Image from 'next/image';
@@ -1003,6 +1006,209 @@ const MusicPanel = () => (
   </div>
 );
 
+// Bookings Panel (admin view)
+type Booking = {
+  id?: string;
+  booking_id: string;
+  customer_name: string;
+  customer_phone: string;
+  party_size: number;
+  table_number: number;
+  booking_time: string;
+  duration_minutes: number;
+  status: 'Booked' | 'Seated' | 'Completed' | 'Cancelled';
+  created_at?: string;
+};
+
+const BookingsPanel = () => {
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [available, setAvailable] = useState<number[]>([]);
+  const [now, setNow] = useState<Date>(new Date());
+  const [duration, setDuration] = useState<number>(60);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  const fetchBookings = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/bookings`);
+      const data = await res.json();
+      setBookings(Array.isArray(data) ? data : []);
+    } catch {
+      message.error('Failed to fetch bookings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAvailable = async (atDate?: Date, dur?: number) => {
+    try {
+      const at = (atDate || now).toISOString();
+      const d = dur || duration;
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/bookings/available?at=${encodeURIComponent(at)}&duration=${d}`);
+      const data = await res.json();
+      setAvailable(Array.isArray(data?.available) ? data.available : []);
+    } catch {
+      setAvailable([]);
+    }
+  };
+
+  useEffect(() => {
+    fetchBookings();
+    fetchAvailable();
+    socket.connect();
+    socket.emit('join_admin');
+    const onBooking = () => { fetchBookings(); fetchAvailable(); };
+    socket.on('booking_update', onBooking);
+    socket.on('booking_status_update', onBooking);
+    socket.on('booking_cancelled', onBooking);
+    return () => {
+      socket.off('booking_update', onBooking);
+      socket.off('booking_status_update', onBooking);
+      socket.off('booking_cancelled', onBooking);
+    };
+  }, []);
+
+  const updateStatus = async (bookingId: string, status: Booking['status']) => {
+    setUpdatingId(bookingId);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/bookings/${bookingId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      if (!res.ok) throw new Error('Failed');
+      message.success(`Status set to ${status}`);
+      fetchBookings();
+    } catch {
+      message.error('Failed to update status');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const cancelBooking = (bookingId: string) => {
+    Modal.confirm({
+      title: 'Cancel booking?',
+      onOk: async () => {
+        try {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/bookings/${bookingId}`, { method: 'DELETE' });
+          if (!res.ok) throw new Error('Failed');
+          message.success('Booking cancelled');
+          fetchBookings();
+          fetchAvailable();
+        } catch {
+          message.error('Failed to cancel');
+        }
+      }
+    });
+  };
+
+  const columns: ColumnsType<Booking> = [
+    { title: 'ID', dataIndex: 'booking_id', key: 'booking_id', width: 160 },
+    { title: 'Name', dataIndex: 'customer_name', key: 'customer_name' },
+    { title: 'Phone', dataIndex: 'customer_phone', key: 'customer_phone' },
+    { title: 'Party', dataIndex: 'party_size', key: 'party_size', width: 80 },
+    { title: 'Table', dataIndex: 'table_number', key: 'table_number', width: 80 },
+    { 
+      title: 'Time', key: 'booking_time', dataIndex: 'booking_time', width: 180,
+      render: (t) => new Date(String(t)).toLocaleString()
+    },
+    { title: 'Duration', dataIndex: 'duration_minutes', key: 'duration_minutes', width: 100 },
+    { 
+      title: 'Status', dataIndex: 'status', key: 'status', width: 120,
+      render: (s) => {
+        const status = String(s) as Booking['status'];
+        const color = status === 'Booked' ? 'blue' : status === 'Seated' ? 'orange' : status === 'Completed' ? 'green' : 'red';
+        return <Tag color={color}>{status}</Tag>;
+      }
+    },
+    {
+      title: 'Actions', key: 'actions', width: 260,
+      render: (_: unknown, rec: Booking) => (
+        <Space size="small">
+          {rec.status === 'Booked' && (
+            <Button size="small" type="primary" loading={updatingId === rec.booking_id} onClick={() => updateStatus(rec.booking_id, 'Seated')}>Seat</Button>
+          )}
+          {rec.status === 'Seated' && (
+            <Button size="small" onClick={() => updateStatus(rec.booking_id, 'Completed')} loading={updatingId === rec.booking_id}>Complete</Button>
+          )}
+          {rec.status !== 'Cancelled' && rec.status !== 'Completed' && (
+            <Button size="small" danger onClick={() => cancelBooking(rec.booking_id)}>Cancel</Button>
+          )}
+        </Space>
+      )
+    }
+  ];
+
+  return (
+    <div className="space-y-6">
+      <Card className="shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-end gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-600">Date</label>
+            <DatePicker 
+              value={dayjs(now)}
+              onChange={(d) => {
+                const cur = new Date(now);
+                const base = d ? d.toDate() : new Date();
+                cur.setFullYear(base.getFullYear(), base.getMonth(), base.getDate());
+                setNow(cur);
+                fetchAvailable(cur, duration);
+              }}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-600">Time</label>
+            <TimePicker
+              value={dayjs(now)}
+              onChange={(t) => {
+                const cur = new Date(now);
+                if (t) {
+                  const dd = t.toDate();
+                  cur.setHours(dd.getHours(), dd.getMinutes(), 0, 0);
+                }
+                setNow(cur);
+                fetchAvailable(cur, duration);
+              }}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-600">Duration (mins)</label>
+            <InputNumber min={15} max={240} step={15} value={duration} onChange={(v) => { const val = Number(v || 60); setDuration(val); fetchAvailable(now, val); }} />
+          </div>
+        </div>
+        <div className="mt-4">
+          <div className="text-sm text-gray-600 mb-2">Available tables</div>
+          {available.length === 0 ? (
+            <div className="text-gray-500">No tables available at the selected time.</div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {available.map(t => (
+                <span key={t} className="px-3 py-1 bg-green-50 text-green-700 rounded border border-green-200">Table {t}</span>
+              ))}
+            </div>
+          )}
+        </div>
+      </Card>
+
+      <Card className="shadow-sm">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="font-semibold">Bookings ({bookings.length})</h3>
+          <Button icon={<ReloadOutlined />} onClick={() => { fetchBookings(); fetchAvailable(); }} loading={loading}>Refresh</Button>
+        </div>
+        <Table 
+          rowKey="booking_id"
+          columns={columns}
+          dataSource={bookings}
+          loading={loading}
+          pagination={{ pageSize: 10, showSizeChanger: true }}
+        />
+      </Card>
+    </div>
+  );
+};
+
 export default function AdminDashboard() {
   const [collapsed, setCollapsed] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('menu');
@@ -1049,6 +1255,7 @@ export default function AdminDashboard() {
   const renderContent = () => {
     switch (activeTab) {
       case 'orders': return <OrdersPanel />;
+      case 'bookings': return <BookingsPanel />;
       case 'menu': return <MenuPanel />;
       case 'feedback': return <FeedbackPanel />;
       case 'reports': return <ReportsPanel />;
@@ -1081,6 +1288,7 @@ export default function AdminDashboard() {
               items={[
                 { key: 'menu', icon: <AppstoreOutlined />, label: 'Menu Management' },
                 { key: 'orders', icon: <ShoppingCartOutlined />, label: 'Orders' },
+                { key: 'bookings', icon: <CalendarOutlined />, label: 'Bookings' },
                 { key: 'messages', icon: <MessageOutlined />, label: 'Customer Messages' },
                 { key: 'feedback', icon: <StarOutlined />, label: 'Customer Feedback' },
                 { key: 'preferences', icon: <UserOutlined />, label: 'Customer Preferences' },
@@ -1114,6 +1322,7 @@ export default function AdminDashboard() {
                   items={[
                     { key: 'menu', icon: <AppstoreOutlined />, label: 'Menu Management' },
                     { key: 'orders', icon: <ShoppingCartOutlined />, label: 'Orders' },
+                    { key: 'bookings', icon: <CalendarOutlined />, label: 'Bookings' },
                     { key: 'messages', icon: <MessageOutlined />, label: 'Customer Messages' },
                     { key: 'feedback', icon: <StarOutlined />, label: 'Customer Feedback' },
                    
